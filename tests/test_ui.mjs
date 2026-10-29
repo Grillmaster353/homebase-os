@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import test from 'node:test';
+import './test_theme.mjs';
 import { BRAND_LOGOS, brandLogo } from '../web/assets/brands/manifest.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -42,11 +43,11 @@ function harness(respond = () => ({})) {
   source = source.replace(/^import .*?;\s*/gm, '');
   source = 'const icon = () => "<svg></svg>";\n' + source;
   source = source.replace(/^await boot\(\);\s*$/m, '');
-  source += '\nglobalThis.ui = { state, api, tvCard, loadEntities, automationsView, propose, date, deploymentSettings, camerasView, lanDetails, networkIdentityBadge, handleAction, shell, stats, securitySettings, helpModal, workspaceModal, connectionModal, pairingModal, devicesView };';
+  source += '\nglobalThis.ui = { state, api, tvCard, loadEntities, automationsView, propose, date, deploymentSettings, camerasView, lanDetails, networkIdentityBadge, handleAction, shell, stats, securitySettings, helpModal, workspaceModal, connectionModal, pairingModal, devicesView, overview };';
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox, { filename: 'app.js', timeout: 1000 });
   sandbox.ui.state.status = { authenticated: true, csrfToken: 'fixture-csrf', user: 'fixture' };
-  return { ui: sandbox.ui, requests, elements, handlers };
+  return { ui: sandbox.ui, requests, elements, handlers, browserWindow: sandbox.window };
 }
 
 test('Home Assistant entity API fixture renders usable, escaped controls', async () => {
@@ -362,4 +363,32 @@ test('documentation preview and invalid repository configuration make no externa
     assert.equal(links[0].href,undefined);
     assert.equal(links[0].hidden,true);
   }
+});
+
+
+test('restyled overview retains every existing section, statistic and navigation control', () => {
+  const {ui,requests}=harness();
+  const html=ui.overview();
+  for(const label of ['Network devices','Live receive traffic','Network latency','App security','Network activity','Your home, a little smarter.','Connected devices','Quick actions','Your integrations','System health']) assert.ok(html.includes(label),label);
+  for(const action of ['network-identity','add','security-details','connect-ha','approvals']) assert.ok(html.includes(`data-action="${action}"`),action);
+  const shell=ui.shell(html);
+  for(const route of ['overview','devices','network','cameras','automations','assistant','settings']) assert.ok(shell.includes(`data-nav="${route}"`),route);
+  for(const action of ['workspace','search','activity','account','help','toggle-theme']) assert.ok(shell.includes(`data-action="${action}"`),action);
+  assert.equal(requests.length,0);
+});
+
+test('theme action changes appearance without API calls or resetting active application state', async () => {
+  const {ui,requests,elements,browserWindow}=harness();
+  let toggles=0;browserWindow.HomeBaseTheme={toggle(){toggles++;}};
+  ui.state.page='settings';ui.state.tab='ai';ui.state.modal='pairing';
+  ui.state.messages=[{role:'user',content:'Keep this message'}];
+  ui.state.overview.actions=[{id:'pending-fixture',status:'pending'}];
+  elements.get('#app').innerHTML='Existing page and typed values';
+  elements.get('#modal-root').innerHTML='Existing pairing form';
+  const before=JSON.stringify(ui.state);
+  await ui.handleAction('toggle-theme',{});
+  assert.equal(toggles,1);assert.equal(JSON.stringify(ui.state),before);
+  assert.equal(elements.get('#app').innerHTML,'Existing page and typed values');
+  assert.equal(elements.get('#modal-root').innerHTML,'Existing pairing form');
+  assert.equal(requests.length,0);
 });
