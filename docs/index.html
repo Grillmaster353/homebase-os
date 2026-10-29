@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c1018">
+  <meta name="description" content="HomeBase OS v1.0.0: a private home command centre for Raspberry Pi OS Lite 64-bit and Docker.">
+  <meta name="homebase-repository" content="https://github.com/Grillmaster353/homebase-os">
+  <script defer src="repository.js"></script>
+  <title>HomeBase OS · Local by design</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to documentation</a>
+<header><a class="brand" href="#">HomeBase<span> OS</span></a><nav aria-label="Documentation"><a href="setup.html">Full setup guide</a><a href="#integrations">Integrations</a><a href="#security">Security</a><a href="#operations">Operations</a><a href="#publishing">Release</a></nav></header>
+<main id="main">
+  <section class="hero">
+    <div class="eyebrow">HOMEBASE OS · V1.0.0</div>
+    <h1>Your home.<br>Under your control.</h1>
+    <p>A private command centre for the devices, services and intelligence on your home network. Run it on Raspberry Pi OS Lite, and bring it together in your browser.</p>
+    <div class="buttons"><a class="button primary" href="setup.html">Install from scratch</a><a class="button" href="#install" data-repository-link="download" hidden>Download source ZIP</a><a class="button" href="#install" data-repository-link="source" hidden>View on GitHub</a></div>
+    <div class="pills"><span>64-bit Raspberry Pi OS Lite</span><span>Local-first</span><span>HTTPS + approvals</span><span>No desktop required</span></div>
+  </section>
+  <div class="grid">
+    <article class="card"><div class="number">01 / VISIBILITY</div><h3>A pulse on your network.</h3><p>Real interface traffic, gateway latency, host health and supported device advertisements. No invented telemetry.</p></article>
+    <article class="card"><div class="number">02 / CONNECTIONS</div><h3>One place for your home.</h3><p>Authorized TV and camera adapters, server metrics and Home Assistant entities, with honest model and protocol limits.</p></article>
+    <article class="card"><div class="number">03 / INTELLIGENCE</div><h3>Help with a human in charge.</h3><p>Ollama or your configured provider can propose device commands and workspace edits. Every action waits for approval.</p></article>
+  </div>
+  <section class="section" id="install">
+    <div class="layout"><div><div class="eyebrow">TERMINAL FIRST</div><h2>At home on your Pi.</h2><p>Use a 64-bit ARM64 Raspberry Pi or AMD64 Linux server on a trusted private LAN.</p></div><div class="steps">
+      <article class="step"><h3>1. Copy the source</h3><p>Download your repository's source and copy the unpacked folder to the Pi through your existing SSH/SFTP connection. If Git is already installed, clone the repository into a folder such as <code>homebase-os</code>.</p></article>
+      <article class="step"><h3>2. Prepare Docker</h3><p>Docker Engine and Compose v2 must already be installed. Their host installation is an explicit action you perform using <a href="https://docs.docker.com/engine/install/debian/">Docker's official Debian guide</a> for 64-bit Raspberry Pi OS. The app script does not install host packages.</p><pre>uname -m
+sudo docker compose version</pre></article>
+      <article class="step"><h3>3. Run the interactive setup</h3><pre>cd homebase-os
+sudo ./scripts/setup-pi.sh</pre><p>Enter the Pi's private IPv4 address and choose an administrator username. The hidden password prompt has no default password. Setup builds the image, prepares the account and TLS, then starts the authenticated HTTPS service.</p></article>
+      <article class="step"><h3>4. Trust your own CA</h3><p>Copy only <code>homebase-rootCA.crt</code> to your client devices over a trusted connection and compare its printed SHA-256 file hash. Import and trust it yourself in macOS Keychain Access or iPhone/iPad Certificate Trust Settings. Then open the printed HTTPS IP URL or persistent <code>homebase-….local</code> name.</p><div class="note">Never bypass certificate warnings. The private CA stays outside the running dashboard's mounts. No public hosting, firewall rule or router forwarding is created.</div></article>
+    </div></div>
+  </section>
+  <section class="section" id="integrations"><div class="eyebrow">REAL PROTOCOLS</div><h2>Connected, with clear limits.</h2><p>Supply your own authorized addresses, pairing and credentials. Discovery does not grant access to a device.</p>
+    <table><thead><tr><th>AREA</th><th>CAPABILITY</th></tr></thead><tbody>
+      <tr><td>Network</td><td>Neighbor/SSDP/supported ONVIF discovery, interface throughput and local gateway latency. Network changes pause discovery; isolation and sleeping devices affect visibility.</td></tr>
+      <tr><td>Smart TVs</td><td>Direct Samsung, Android/Google TV, Apple TV, Roku and LG webOS adapters with device-authorized pairing. Hisense follows its Android/Roku platform; VIDAA-only models are not claimed. Home Assistant is optional. Samsung/LG/Roku cleartext local channels require explicit device-level opt-in.</td></tr>
+      <tr><td>Hikvision</td><td>Authorized ISAPI JPEG snapshots with a supported account and channel. API/ONVIF settings can require enabling on the camera. No bundled RTSP transcoder or recording service.</td></tr>
+      <tr><td>Servers</td><td>Host CPU, memory, disk and traffic plus configured Prometheus node_exporter endpoints. CPU utilization needs two counter samples.</td></tr>
+      <tr><td>Home Assistant</td><td>Read real entities and approve supported service calls, scenes and automations. Home Assistant remains your separately managed service.</td></tr>
+      <tr><td>AI</td><td>An already running Ollama model or configured compatible provider. Approved file reads can inform subsequent edits. No arbitrary shell execution or self-approved actions.</td></tr>
+    </tbody></table>
+  </section>
+  <section class="section" id="security"><div class="eyebrow">PRIVATE BY DESIGN</div><h2>Your credentials stay protected.<br>Your actions stay yours.</h2><p>Salted scrypt passwords, protected session cookies, CSRF checks, rate limits, optional TOTP and AES-256-GCM credential storage form the local security boundary. The container runs without root or expanded capabilities.</p>
+    <div class="flow" aria-label="Action approval sequence"><span>Ask or select a command</span><b>→</b><span>Inspect the exact proposal</span><b>→</b><span>Approve once</span><b>→</b><span>Review the result</span></div>
+    <p>Someone with access to the encrypted vault and its matching key can recover credentials. Protect the host and backups. A configured remote AI provider receives chat, selected telemetry and approved file-read contents; local Ollama inference can keep these on your own network.</p><p>ISP identification is optional and disabled by default. When enabled, the server checks <code>api.ipify.org</code> every 60 seconds for a public IPv4 change. It refreshes provider metadata through <code>ipwho.is</code> after an IP change, initial/error lookup or six-hour cache expiry. Both services see that connection's public IP; device inventory and integration credentials are not sent. The change-check IP stays in memory and is excluded from stored settings and API responses. Logo assets and manufacturer-prefix matching are local. This release has not undergone an independent security audit.</p>
+  </section>
+  <section class="section" id="operations"><div class="eyebrow">KEEP IT RUNNING</div><h2>Simple maintenance.</h2><pre>sudo docker compose -f compose.yaml -f compose.lan.yaml ps
+sudo docker compose -f compose.yaml -f compose.lan.yaml logs --tail=60
+
+# Apply source updates without deleting data
+sudo docker compose -f compose.yaml -f compose.lan.yaml up -d --build</pre>
+    <details><summary>The Pi's IP changed</summary><p>Rerun setup with its current private IPv4. The existing account and CA are preserved and the server certificate is refreshed. Resume discovery on the intended network.</p></details>
+    <details><summary>The .local name or a device is missing</summary><p>mDNS and device advertisements need a multicast-capable LAN. Guest isolation, VLANs and sleeping devices can interfere. Use the certificate's direct IP URL and add authorized integrations manually when needed.</p></details>
+    <details><summary>Keep data through an update</summary><p>Keep the existing Compose project and named volumes. Never use <code>down -v</code> as an update command: it removes the saved account, encrypted vault and workspace. Protect backups and private CA material.</p></details>
+    <details><summary>About this documentation website</summary><p>This is static documentation source. Publishing it with GitHub Pages is optional and separate from the dashboard, which runs only on your own host. No repository, workflow or public site is created merely by downloading the source.</p></details>
+  </section>
+  <section class="section" id="publishing"><div class="eyebrow">SHARE THE SOURCE</div><h2>Your repository. Your release.</h2><p>Upload the prepared <code>homebase-os/</code> source folder to your own GitHub repository, review its CI results, and create a draft release at the <code>v1.0.0</code> tag. Attach the source ZIP and its matching SHA-256 checksum when ready.</p><p>The supplied documentation workflow publishes only after a manual run. GitHub Pages hosts these static guides; the authenticated application continues to run on the user's own Pi. Source preparation does not create a remote repository or publish anything.</p><div class="buttons"><a class="button" href="RELEASING.md">Complete release guide · Markdown</a><a class="button" href="PUBLISH-CHECKLIST.md">Publishing checklist · Markdown</a></div></section>
+</main>
+<footer><span>HomeBase OS v1.0.0 · MIT application license · Separate third-party notices apply.</span><span>Local by design. Human approval by default.</span></footer>
+</body></html>

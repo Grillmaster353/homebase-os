@@ -1,0 +1,262 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1018"><meta name="description" content="Complete HomeBase OS installation: Raspberry Pi OS Lite, SSH, Docker, HTTPS and device setup."><title>Install HomeBase OS · Complete Raspberry Pi Guide</title><link rel="stylesheet" href="site.css"><link rel="stylesheet" href="guide.css"><script defer src="guide.js"></script></head><body><a class="skip" href="#guide">Skip to guide</a><header><a class="brand" href="index.html">HomeBase<span> OS</span></a><nav aria-label="Guide navigation"><a href="index.html">Overview</a><a href="setup.html" aria-current="page">Full setup guide</a><a href="https://github.com/Grillmaster353/homebase-os">Source</a></nav></header><main class="guide-shell"><aside class="guide-toc"><div class="eyebrow">FROM BLANK CARD TO DASHBOARD</div><h2>Your installation map</h2><div class="toc">
+<ul>
+<li><a href="#homebase-os-from-a-blank-card-to-a-working-dashboard">HomeBase OS: from a blank card to a working dashboard</a><ul>
+<li><a href="#1-gather-the-hardware">1. Gather the hardware</a></li>
+<li><a href="#2-install-raspberry-pi-os-lite">2. Install Raspberry Pi OS Lite</a></li>
+<li><a href="#3-configure-the-pi-before-writing">3. Configure the Pi before writing</a></li>
+<li><a href="#4-boot-and-find-the-pi">4. Boot and find the Pi</a></li>
+<li><a href="#5-check-the-os-and-apply-updates">5. Check the OS and apply updates</a></li>
+<li><a href="#6-install-docker-engine-and-compose">6. Install Docker Engine and Compose</a></li>
+<li><a href="#7-download-homebase-os">7. Download HomeBase OS</a></li>
+<li><a href="#8-run-the-interactive-setup">8. Run the interactive setup</a></li>
+<li><a href="#9-verify-the-running-service">9. Verify the running service</a></li>
+<li><a href="#10-trust-your-own-https-certificate-on-client-devices">10. Trust your own HTTPS certificate on client devices</a></li>
+<li><a href="#11-sign-in-and-make-the-dashboard-yours">11. Sign in and make the dashboard yours</a></li>
+<li><a href="#12-connect-optional-integrations">12. Connect optional integrations</a></li>
+<li><a href="#13-check-the-finished-installation">13. Check the finished installation</a></li>
+<li><a href="#14-reboots-updates-and-private-backups">14. Reboots, updates and private backups</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#references-and-verification-limits">References and verification limits</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p class="guide-meta">v1.0.0 · Raspberry Pi OS Lite 64-bit<br>Docker Engine + Compose</p></aside><article id="guide" class="guide-content"><h1 id="homebase-os-from-a-blank-card-to-a-working-dashboard">HomeBase OS: from a blank card to a working dashboard</h1>
+<p>This tutorial installs <strong>HomeBase OS v1.0.0</strong> on <strong>Raspberry Pi OS Lite (64-bit)</strong>. You prepare the Pi from another computer, then use a terminal. No desktop, browser, Home Assistant installation, or host Python setup is needed on the Pi.</p>
+<p>HomeBase runs locally in Docker. The GitHub website supplies the code and instructions; it does not host your dashboard. Each installation has its own account, encrypted credentials and HTTPS certificates.</p>
+<h2 id="1-gather-the-hardware">1. Gather the hardware</h2>
+<p>For a first installation, use a Raspberry Pi 4 or 5 with 4 GB RAM or more, a suitable power supply, cooling appropriate to the model, and a reliable 32 GB or larger microSD card or supported SSD. This is a practical starting recommendation, not a claim that every Pi/model has been hardware-tested. A Docker build can use more resources than the running dashboard. Older or low-memory models need separate validation.</p>
+<p>You also need a card reader, a Mac/Windows/Linux computer, internet access for the first image and Docker builds, and a trusted home network. Ethernet is simplest for first boot; supported Wi-Fi also works. Keep the Pi and the devices you want to discover on a network where local communication and multicast are allowed.</p>
+<p><strong>Writing an OS image erases the selected storage device. Back up the card and check the target carefully.</strong> Do not select a disk containing files you want to keep. This guide does not erase or configure anything until you carry out the steps yourself.</p>
+<h2 id="2-install-raspberry-pi-os-lite">2. Install Raspberry Pi OS Lite</h2>
+<ol>
+<li>Download <strong>Raspberry Pi Imager</strong> from the <a href="https://www.raspberrypi.com/software/">official Raspberry Pi software page</a>. Install and open it on your preparation computer.</li>
+<li>Select your actual Raspberry Pi model under <strong>Device</strong>.</li>
+<li>Under <strong>Operating System</strong>, choose <strong>Raspberry Pi OS Lite (64-bit)</strong>. It may appear under <strong>Raspberry Pi OS (other)</strong>. Choose Lite, without the desktop; do not choose 32-bit or an unsupported older image.</li>
+<li>Under <strong>Storage</strong>, select the intended card/SSD. Check its capacity and identity before proceeding.</li>
+<li>Open the Imager <strong>Customisation</strong> pages. Menu wording can differ between Imager versions; the required settings are listed below.</li>
+</ol>
+<p>Raspberry Pi's <a href="https://www.raspberrypi.com/documentation/computers/getting-started.html">OS installation guide</a> covers the current Imager screens. <a href="https://www.raspberrypi.com/documentation/computers/os.html">Raspberry Pi OS documentation</a> explains the Lite and 64-bit variants.</p>
+<h2 id="3-configure-the-pi-before-writing">3. Configure the Pi before writing</h2>
+<p>In Imager, configure:</p>
+<ul>
+<li><strong>Hostname:</strong> for example <code>homebase-pi</code>. This becomes the Pi's SSH name, usually <code>homebase-pi.local</code>.</li>
+<li><strong>Locale:</strong> your time zone and keyboard layout. Choose the country where the Pi will be used.</li>
+<li><strong>Linux username/password:</strong> create your own account, for example <code>piadmin</code>, with a unique strong password. Do not assume the old <code>pi</code> / <code>raspberry</code> credentials exist. This Linux account is separate from the HomeBase dashboard account created later.</li>
+<li><strong>Wi-Fi:</strong> if using it, enter the exact network name, password and wireless country. Use a band supported by your Pi. Ethernet users can connect a cable instead.</li>
+<li><strong>Remote Access / SSH:</strong> enable SSH. Prefer an existing SSH public key if you already use keys; provide only the public <code>.pub</code> key. Otherwise select password authentication with the strong Linux password you chose. Never upload or paste a private SSH key into an image or website.</li>
+</ul>
+<p>Raspberry Pi Connect is not needed for this local installation. You do not need router port forwarding or a public tunnel. Review the settings, write the image and let Imager finish verification before ejecting the card. See the official <a href="https://www.raspberrypi.com/documentation/computers/remote-access.html">SSH setup instructions</a>.</p>
+<h2 id="4-boot-and-find-the-pi">4. Boot and find the Pi</h2>
+<p>Insert the prepared storage, attach Ethernet if using it, then connect power. Give first boot time to complete its initial configuration. A steady power indicator alone does not prove networking is ready.</p>
+<p>On your preparation computer, open Terminal (Mac/Linux) or PowerShell (Windows). Replace <code>piadmin</code> and the hostname with the values you chose:</p>
+<pre><code class="language-sh">ssh piadmin@homebase-pi.local
+</code></pre>
+<p>If <code>.local</code> does not resolve, find the Pi's address in your router's connected-device list or on a locally attached Pi console, then use:</p>
+<pre><code class="language-sh">ssh piadmin@192.168.1.20
+</code></pre>
+<p>The IP above is an example. Use your Pi's actual address. On first connection, SSH asks about a new host key. Verify that you are connecting to the intended Pi and compare its host-key fingerprint over a trusted local path before accepting. A Pi console can show its ED25519 host-key fingerprint with <code>ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</code>. Do not ignore a later unexpected changed-key warning.</p>
+<p>Enter your Linux password when asked. Terminal does not display characters while you type it. A prompt on the Pi means the SSH connection succeeded.</p>
+<h2 id="5-check-the-os-and-apply-updates">5. Check the OS and apply updates</h2>
+<p>Run these on the <strong>Pi</strong>, not on your Mac or Windows computer:</p>
+<pre><code class="language-sh">uname -m
+getconf LONG_BIT
+cat /etc/os-release
+hostname -I
+</code></pre>
+<p>Expected: <code>aarch64</code> or <code>arm64</code>, <code>64</code>, and Raspberry Pi OS based on a supported Debian release. The Docker instructions below target <strong>Bookworm (12)</strong> and <strong>Trixie (13)</strong>. <code>armv7l</code> or <code>32</code> means you installed a 32-bit OS: use a 64-bit image before continuing.</p>
+<p>For a fresh Pi, review and install OS updates:</p>
+<pre><code class="language-sh">sudo apt update
+sudo apt full-upgrade
+sudo reboot
+</code></pre>
+<p>The reboot closes SSH. Reconnect with the same SSH command after the Pi returns. If package updates report an error, resolve it rather than continuing with a partially configured OS.</p>
+<h2 id="6-install-docker-engine-and-compose">6. Install Docker Engine and Compose</h2>
+<p>Check whether Docker is already ready:</p>
+<pre><code class="language-sh">sudo docker version
+sudo docker compose version
+</code></pre>
+<p>If both work, skip the installation commands. On an existing server with other containers or conflicting packages, follow Docker's migration guidance before changing packages. Do not remove Docker volumes or another application's data to resolve an installation conflict.</p>
+<p>For a fresh supported 64-bit Raspberry Pi OS installation, the commands below add Docker's official Debian APT repository and install host packages. They are explicit system changes you choose to run. The HomeBase setup script does not run them for you.</p>
+<pre><code class="language-sh">sudo apt update
+sudo apt install ca-certificates curl git
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+sudo tee /etc/apt/sources.list.d/docker.sources &gt;/dev/null &lt;&lt;EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release &amp;&amp; echo &quot;$VERSION_CODENAME&quot;)
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+sudo docker compose version
+sudo docker run --rm hello-world
+</code></pre>
+<p>A successful <code>hello-world</code> message verifies that Docker can start a container. The first run downloads a small official test image. The service starts at boot; this guide uses <code>sudo</code> rather than adding your user to the privileged Docker group.</p>
+<p>Use <a href="https://docs.docker.com/engine/install/debian/">Docker's Debian installation instructions</a> as the authoritative reference. Docker directs 64-bit Raspberry Pi OS users to that installation path. Other OS releases require checking their supported instructions before proceeding.</p>
+<h2 id="7-download-homebase-os">7. Download HomeBase OS</h2>
+<p>Still in the Pi SSH session:</p>
+<pre><code class="language-sh">cd ~
+git clone https://github.com/Grillmaster353/homebase-os.git
+cd homebase-os
+ls
+</code></pre>
+<p>You should see <code>Dockerfile</code>, <code>compose.yaml</code>, <code>compose.lan.yaml</code>, <code>requirements.txt</code>, <code>requirements-tv.txt</code>, <code>app</code>, <code>web</code>, <code>scripts</code> and <code>docs</code>.</p>
+<p>If you prefer a tagged source ZIP, download it from <a href="https://github.com/Grillmaster353/homebase-os/releases">GitHub Releases</a>, verify the matching SHA-256 checksum, extract it and enter its source folder. You can also copy an unpacked source folder over your existing authenticated SFTP connection. Do not copy someone else's runtime data, account or private certificates.</p>
+<p>A source checkout includes everything needed to build HomeBase, but not Docker Engine, an AI model server, third-party account credentials or a prebuilt Pi SD-card image. Docker's first build downloads dependencies and may compile an ARM64 dependency; it can take considerably longer than later starts.</p>
+<h2 id="8-run-the-interactive-setup">8. Run the interactive setup</h2>
+<p>From the source folder on the Pi:</p>
+<pre><code class="language-sh">sudo bash scripts/setup-pi.sh
+</code></pre>
+<p>The script checks Linux, 64-bit userspace, an interactive terminal and a running Docker Engine/Compose. It then asks for:</p>
+<ol>
+<li><strong>The Pi's private IPv4 address.</strong> Check <code>hostname -I</code> and your router's client list. Select the address reachable by your home devices, rather than a Docker bridge, VPN or public address. The proposed default comes from the Pi's routing table.</li>
+<li><strong>A dashboard username.</strong> The default suggestion is <code>admin</code>; choose your own if preferred.</li>
+<li><strong>A dashboard password.</strong> For a new account, enter and confirm a unique password of at least 14 characters at the hidden prompt. This is separate from your Pi's Linux password. No password is bundled in this release.</li>
+</ol>
+<p>Setup builds the image, prepares the persistent account, creates a private local CA and server certificate, and starts the HTTPS service with automatic local discovery. Its runtime container is non-root, drops capabilities and has a read-only root filesystem. Docker's build stage installs dependencies inside the image, not into your Pi's host Python.</p>
+<p>Do not interrupt an image build merely because compilation is quiet. Read any reported error. A successful run ends with <strong>Dashboard ready: https://YOUR_PI_IP:8420</strong>, a public CA file location and its hash. It may also print a unique <code>homebase-….local</code> dashboard name.</p>
+<p>The SSH hostname from Imager and the generated dashboard hostname are different names. Use an HTTPS address actually printed by setup. Do not invent a <code>.local</code> address or assume <code>localhost</code> on your phone means the Pi.</p>
+<h2 id="9-verify-the-running-service">9. Verify the running service</h2>
+<p>On the Pi, run:</p>
+<pre><code class="language-sh">sudo docker compose -f compose.yaml -f compose.lan.yaml ps
+sudo docker compose -f compose.yaml -f compose.lan.yaml logs --tail=60
+</code></pre>
+<p>The <code>home-command</code> container should be running. Verify HTTPS using the generated local CA, substituting the Pi's real address:</p>
+<pre><code class="language-sh">curl --cacert homebase-rootCA.crt https://192.168.1.20:8420/health
+</code></pre>
+<p>Expected output includes <code>"status": "ok"</code> and version <code>1.0.0</code>. This verifies the server and certificate from the Pi; it does not establish another device's Wi-Fi reachability or every integration's compatibility. Do not use <code>curl -k</code> or bypass certificate validation to hide a certificate error.</p>
+<p>If setup failed before “Dashboard ready”, inspect the logs and the troubleshooting section before treating the app as installed.</p>
+<h2 id="10-trust-your-own-https-certificate-on-client-devices">10. Trust your own HTTPS certificate on client devices</h2>
+<p>Setup places the <strong>public</strong> certificate <code>homebase-rootCA.crt</code> in the source folder. Transfer only this public certificate to your own client device over trusted SSH/SFTP. Keep <code>certs/server.key</code>, <code>.setup-ca/</code>, the Docker data volume and the vault private.</p>
+<p>From a new terminal on your Mac/Linux computer, not inside the Pi SSH session:</p>
+<pre><code class="language-sh">scp piadmin@homebase-pi.local:~/homebase-os/homebase-rootCA.crt ~/Downloads/homebase-rootCA.crt
+</code></pre>
+<p>Replace the account, hostname and source path if you chose different ones. Windows users can use a trusted SFTP client or the <code>scp</code> available with their SSH tools and a suitable local destination.</p>
+<p>Compare the transferred file's SHA-256 hash with the value setup printed:</p>
+<pre><code class="language-sh"># On the Pi
+sha256sum homebase-rootCA.crt
+
+# On a Mac, against the copied public file
+shasum -a 256 ~/Downloads/homebase-rootCA.crt
+</code></pre>
+<ul>
+<li><strong>Mac:</strong> open Keychain Access, import your verified public CA certificate, then explicitly trust that certificate for SSL. This is a client trust change you perform yourself. <a href="https://support.apple.com/guide/keychain-access/change-the-trust-settings-of-a-certificate-kyca11871/mac">Apple's trust guide</a> explains the controls.</li>
+<li><strong>iPhone / iPad:</strong> install the verified certificate profile, then enable its root under <strong>Settings → General → About → Certificate Trust Settings</strong>. <a href="https://support.apple.com/en-au/102390">Apple's certificate guide</a> covers manual trust. Transfer only through a trusted method; do not distribute the private key.</li>
+<li><strong>Other devices:</strong> use the operating system's documented certificate-trust workflow for your own CA, or a certificate from an already trusted local setup. Do not install an unknown CA supplied by someone else's deployment.</li>
+</ul>
+<p>Then visit the printed <code>https://PI_ADDRESS:8420</code> URL in your browser on the same network. A browser privacy warning means trust, hostname, date/time or IP configuration still needs fixing. Do not click through it as a substitute for correct setup.</p>
+<h2 id="11-sign-in-and-make-the-dashboard-yours">11. Sign in and make the dashboard yours</h2>
+<p>Sign in using the dashboard account you created in setup. This is not your SSH account unless you deliberately chose the same username; keep their passwords separate.</p>
+<ul>
+<li>Open the top-left workspace menu, enter a display name and save. Reload once to confirm it persisted.</li>
+<li>Open <strong>Settings → Security</strong>. The app reports its account, encrypted vault, HTTPS, key permissions and action-approval controls. This is app-security information, not an assessment of your whole home.</li>
+<li>Enable two-factor authentication if wanted. Save the authenticator setup/backup securely before confirming a fresh six-digit code. There is no email recovery service; an offline password reset does not bypass a configured second factor.</li>
+<li>Open <strong>Devices</strong>. Automatic read-only discovery can find supported advertisements on the visible network. Cached neighbors can remain unverified; a large count does not prove those devices are online. Guest isolation, VLANs, sleeping devices and disabled discovery services can limit results.</li>
+<li>Live receive/send values are current traffic through the Pi's interface. They are not the maximum download speed of your internet plan.</li>
+</ul>
+<h2 id="12-connect-optional-integrations">12. Connect optional integrations</h2>
+<p><strong>TVs:</strong> choose a discovered TV or add its private address. New connections can use Direct mode without Home Assistant. Select the actual platform, start pairing only when ready, then enter the code shown on Android/Google TV or Apple TV. Samsung/LG use an on-screen authorization; Roku uses its enabled local control setting. Samsung/LG/Roku local channels require an explicit unencrypted-LAN opt-in. Hisense support depends on its Android/Google TV or Roku platform; VIDAA-only models are not claimed. Remote commands wait for separate approval. <strong>Remove TV</strong> deletes the saved HomeBase connection; discovery can still see the physical TV. See <a href="TV.md">TV protocols and pairing</a>.</p>
+<p><strong>Cameras:</strong> add an authorized Hikvision camera/NVR URL, username/password and the correct ISAPI channel. Discovery does not grant viewing rights or enable a camera API. This release provides JPEG snapshots, not a bundled RTSP recording/transcoding service.</p>
+<p><strong>Servers:</strong> add existing <code>node_exporter</code> endpoints for other machines. Host/container visibility determines the local metrics; remote CPU utilization needs two counter samples. Installing an exporter is a separate action on that machine.</p>
+<p><strong>Home Assistant:</strong> optional for its real entities, services, scenes and automations. Enter the authorized local URL/token. HomeBase does not install Home Assistant or configure it for you.</p>
+<p><strong>AI:</strong> choose an already running Ollama server and installed model, or a compatible provider. Actual response speed depends on hardware and model. A Pi is not guaranteed fast inference. A configured remote AI provider receives chat, selected telemetry and approved file contents. File/device proposals require approval; arbitrary shell execution is unavailable.</p>
+<p><strong>ISP badge:</strong> optional automatic mode checks <code>api.ipify.org</code> every 60 seconds for a public IPv4 change, then refreshes ISP details through <code>ipwho.is</code> on changes or metadata expiry. Both see the connection's public IP; credentials/inventory are not sent. A VPN may report its exit network. Manual names are also supported. See <a href="integrations.md">integration requirements</a>.</p>
+<h2 id="13-check-the-finished-installation">13. Check the finished installation</h2>
+<p>You are ready to use HomeBase when all applicable checks succeed:</p>
+<ul>
+<li>Docker reports the container running and the CA-verified health check returns <code>ok</code>.</li>
+<li>A second device on your home network opens the HTTPS URL without a certificate warning and shows the sign-in screen.</li>
+<li>You can sign in, save a workspace name, reload it and see changing live telemetry.</li>
+<li>You can sign out; device telemetry requires authentication again.</li>
+<li>A compatible device can be paired using its physical permission/code flow, and a test command runs only after you approve it. Do this only when it is safe to operate that device.</li>
+<li>You know where the public certificate, private CA and persistent Docker volumes are stored and how to protect their backups.</li>
+</ul>
+<p>A successful dashboard setup does not prove every TV/camera model works. Report target-hardware results separately from fixture tests. See <a href="VALIDATION.md">release validation</a>.</p>
+<h2 id="14-reboots-updates-and-private-backups">14. Reboots, updates and private backups</h2>
+<p>Docker's restart policy brings the service back after a normal Pi reboot, provided Docker starts and the container was not deliberately stopped. Reconnect to the printed LAN URL after the Pi returns.</p>
+<p>Run these in the source folder:</p>
+<pre><code class="language-sh"># Inspect or stop without deleting saved data
+sudo docker compose -f compose.yaml -f compose.lan.yaml ps
+sudo docker compose -f compose.yaml -f compose.lan.yaml stop
+
+# Start an existing configured installation
+sudo docker compose -f compose.yaml -f compose.lan.yaml up -d
+
+# After reviewing and downloading updated source
+git pull --ff-only
+sudo docker compose -f compose.yaml -f compose.lan.yaml up -d --build
+</code></pre>
+<p>Before updates, make a private backup of both persistent volumes and <code>certs/</code> plus <code>.setup-ca/</code>. Keep the vault and its matching master key together. Backups contain credentials; never attach them to an issue or public release. Keep the same Compose project and volumes. <strong>Do not use <code>docker compose down -v</code> as an update command:</strong> it removes saved account/vault/workspace volumes.</p>
+<p>If the Pi's LAN IP changes, rerun <code>sudo bash scripts/setup-pi.sh</code> with the new private address. Existing accounts and the local CA are retained, and the server certificate is refreshed. Protect the original CA; a changed CA requires new deliberate trust on clients. A router DHCP reservation can make the address more stable, but configure it yourself only if appropriate for your router.</p>
+<p>See <a href="operations.md">operations, backups and account recovery</a> for maintenance details.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>homebase-pi.local</code> cannot be found</td>
+<td>Confirm the hostname, same LAN and mDNS support. Find the Pi's current IP in the router client list and use it for SSH.</td>
+</tr>
+<tr>
+<td>SSH is refused</td>
+<td>Confirm SSH was enabled in Imager, boot completed and the address belongs to the Pi. Recheck from a Pi console if needed.</td>
+</tr>
+<tr>
+<td>SSH password fails</td>
+<td>Use the Linux username/password configured in Imager, not the HomeBase dashboard account.</td>
+</tr>
+<tr>
+<td>Architecture check fails</td>
+<td>Re-image with Raspberry Pi OS Lite 64-bit. A 64-bit kernel with 32-bit userspace is insufficient.</td>
+</tr>
+<tr>
+<td><code>docker</code> or Compose is missing</td>
+<td>Complete the official Docker package installation and check <code>sudo docker compose version</code>.</td>
+</tr>
+<tr>
+<td>Docker daemon cannot be reached</td>
+<td>Check <code>sudo systemctl status docker</code> and <code>sudo docker info</code>. Read the service's error before retrying setup.</td>
+</tr>
+<tr>
+<td>Build fails or the Pi runs out of memory</td>
+<td>Save the error; check free storage with <code>df -h</code> and RAM with <code>free -h</code>. Low-memory models may not be suitable for the first build. Do not delete data volumes to free space blindly.</td>
+</tr>
+<tr>
+<td>Script says it needs an interactive terminal</td>
+<td>Run directly in your SSH terminal. Do not pipe the password or put it into a shell command/environment variable.</td>
+</tr>
+<tr>
+<td>Browser says the connection is not private</td>
+<td>Verify the copied public CA, client trust, system clock and certificate's address. If the Pi IP changed, rerun setup. Do not disable certificate verification.</td>
+</tr>
+<tr>
+<td>Phone cannot reach the dashboard</td>
+<td>Use the Pi's printed HTTPS URL, not phone <code>localhost</code>. Check same LAN/guest isolation, port 8420, container logs and existing firewall policy. No router port forwarding is needed.</td>
+</tr>
+<tr>
+<td>TV or camera is missing</td>
+<td>Check the actual supported platform, power state, API/discovery settings and multicast reachability. Try an authorized manual address.</td>
+</tr>
+<tr>
+<td>Low Mbps while Speedtest is fast</td>
+<td>The dashboard shows interface usage, not maximum internet bandwidth.</td>
+</tr>
+<tr>
+<td>AI is slow/unreachable</td>
+<td>Check the saved endpoint and model; use hardware capable of that model. Start with status-only mode to verify the app independently.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="references-and-verification-limits">References and verification limits</h2>
+<p>The OS and Docker steps link to the official Raspberry Pi, Docker and Apple documentation above. Commands target a fresh supported 64-bit Pi OS installation. Source/approval/security behavior has fixture tests, while physical Pi image builds, network reachability and device compatibility require target verification. Review <a href="VALIDATION.md">VALIDATION.md</a> for the results actually recorded for this release. No default credentials, public dashboard or independent security-audit claim are included.</p></article></main><footer><span>HomeBase OS · Local by design</span><a href="INSTALL.md">Download the Markdown guide</a></footer></body></html>
