@@ -108,6 +108,7 @@ test('overview network branding uses a local transparent router logo and real pr
   assert.match(html,/Telstra/);
   assert.match(html,/TP-Link/);
   assert.match(html,/\/assets\/brands\/tplink\.mono\.svg/);
+  assert.match(html,/<strong><img[^>]+src="\/assets\/brands\/telstra\.svg"[^>]+alt="Telstra — internet provider"/);
   assert.doesNotMatch(html,/https?:\/\//);
   assert.equal(requests.length,0);
 });
@@ -129,6 +130,19 @@ test('Exetel gets a readable local logo when the router brand is unknown', () =>
   assert.match(html,/Exetel — internet provider/);
   assert.match(html,/ISP \/ EXIT/);
   assert.match(html,/Manual provider/);
+});
+
+test('Telstra automatic and manual badges load bundled artwork without a known router', () => {
+  const {ui,requests}=harness();
+  for(const source of ['ipwho.is','manual']){
+    ui.state.overview.networkIdentity={isp:{id:'telstra',name:'Telstra',source},router:{id:'unknown'}};
+    const html=ui.networkIdentityBadge();
+    assert.match(html,/src="\/assets\/brands\/telstra\.svg"/);
+    assert.match(html,/alt="Telstra — internet provider"/);
+    assert.match(html,/ISP \/ EXIT/);
+    assert.doesNotMatch(html,/https?:\/\//);
+  }
+  assert.equal(requests.length,0);
 });
 
 test('auto-detect requests a fresh result and renders Automatic mode instead of the saved override', async () => {

@@ -9,6 +9,11 @@ from app.network_identity import CACHE_SECONDS, DEFAULT_SETTINGS, LOOKUP_URL, Ne
 
 
 class NetworkIdentityTests(unittest.TestCase):
+    def test_telstra_and_bigpond_reported_names_share_the_bundled_logo_id(self):
+        for name in ('Telstra', 'Telstra Internet Pty Ltd', 'Telstra Corporation Limited', 'Telstra Limited', 'BigPond', 'Bigpond Internet'):
+            with self.subTest(name=name):
+                self.assertEqual(canonical_name(name), {'name': 'Telstra', 'id': 'telstra'})
+
     def setUp(self):
         self.settings = copy.deepcopy(DEFAULT_SETTINGS)
         self.overview = {"network": {"interface": "en0", "localAddress": "192.168.1.5", "gateway": "192.168.1.1"}, "devices": [{"ip": "192.168.1.1", "mac": "00:11:22:33:44:55", "lastSeen": None}]}
