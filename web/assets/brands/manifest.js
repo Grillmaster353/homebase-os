@@ -1,5 +1,19 @@
 // Local transparent vectors; provenance in CREDITS.md.
 export const BRAND_LOGOS=Object.freeze({
+  "telstra": {
+      "id": "telstra",
+      "name": "Telstra",
+      "logo": "/assets/brands/telstra.svg",
+      "monoLogo": "/assets/brands/telstra.mono.svg",
+      "darkLogo": "/assets/brands/telstra.svg",
+      "color": "#0D54FF",
+      "roles": [
+          "isp"
+      ],
+      "source": "https://www.telstra.com.au/etc/designs/lego/nav-lego/assets/t-logo.svg",
+      "brandSource": "https://www.telstra.com.au/",
+      "license": "Official Telstra website header artwork; trademark rights reserved. Used for provider identification."
+  },
   "tplink": {
     "id": "tplink",
     "name": "TP-Link",
