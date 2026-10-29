@@ -1,0 +1,20 @@
+# Explicit LAN opt-in. Run scripts/setup-pi.sh or provide your own certificates.
+# Never configure a router port-forward for this service.
+services:
+  home-command:
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8420"
+      - --data-dir
+      - /data
+      - --lan
+      - --advertise
+      - --auto-discover
+      - --cert
+      - /certs/server.crt
+      - --key
+      - /certs/server.key
+    volumes:
+      - ./certs:/certs:ro

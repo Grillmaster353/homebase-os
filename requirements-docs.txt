@@ -1,0 +1,2 @@
+# Optional authoring tool only. The deployed site is already generated.
+Markdown>=3.7,<4

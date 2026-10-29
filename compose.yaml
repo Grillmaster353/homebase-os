@@ -1,0 +1,32 @@
+name: home-command
+
+services:
+  home-command:
+    build: .
+    image: home-command:local
+    container_name: home-command
+    # Host networking is for Linux / Raspberry Pi. It allows local SSDP discovery.
+    # The app still binds to loopback until you explicitly use compose.lan.yaml.
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    volumes:
+      - command-data:/data
+      - command-workspace:/workspace
+    command:
+      - --host
+      - 127.0.0.1
+      - --port
+      - "8420"
+      - --data-dir
+      - /data
+
+volumes:
+  command-data:
+  command-workspace:

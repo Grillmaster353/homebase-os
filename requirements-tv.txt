@@ -1,0 +1,6 @@
+# Direct local-TV adapters. Install in a project virtual environment or Docker.
+# No ADB, microphone, voice, or GUI dependencies are used by this application.
+androidtvremote2>=0.3.2,<0.4.0
+pyatv>=0.18.0,<0.19.0
+websockets>=15.0,<18.0
+zeroconf>=0.129.0,<0.152.0
