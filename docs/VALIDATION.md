@@ -10,3 +10,7 @@ Local checks on 29 October 2026; GitHub CI confirmed on 30 October 2026:
 The public source includes no account, password, runtime vault, private certificate, private CA, assistant workspace, or personal screenshots. Its export manifest records SHA-256 hashes for the included source files.
 
 GitHub Actions successfully ran the fixture checks and built Linux ARM64 and AMD64 Docker images without publishing them: [verification run](https://github.com/Grillmaster353/homebase-os/actions/runs/40843504330), application source revision `449f0fb`. Docker remains unavailable on the development Mac, so no local Docker run is claimed. No physical Raspberry Pi deployment or real TV pairing/control is claimed. Target hardware and network checks remain necessary. This release has not undergone an independent security audit.
+
+## Telstra artwork update — 30 October 2026
+
+111 Python tests and 27 offline UI tests pass after adding official local Telstra vectors. Telstra and BigPond aliases resolve to the same artwork ID. The live Mac dashboard was reloaded and its automatically detected Telstra badge visibly rendered the bundled logo. When a router logo is also available, the provider retains its own icon beside its name. No account settings, credentials or device controls were changed.
