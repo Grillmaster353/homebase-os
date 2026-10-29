@@ -14,3 +14,7 @@ GitHub Actions successfully ran the fixture checks and built Linux ARM64 and AMD
 ## Telstra artwork update — 30 October 2026
 
 111 Python tests and 27 offline UI tests pass after adding official local Telstra vectors. Telstra and BigPond aliases resolve to the same artwork ID. The live Mac dashboard was reloaded and its automatically detected Telstra badge visibly rendered the bundled logo. When a router logo is also available, the provider retains its own icon beside its name. No account settings, credentials or device controls were changed.
+
+## Appearance update — 30 October 2026
+
+The reference-inspired layout keeps all four overview statistics, six overview sections, routes, integration forms and action hooks. Dark colors remain; an optional light mode is saved in browser-local storage. 111 Python tests and 39 offline UI/theme tests pass. Browser checks cover 375px, 768px and 1440px layouts, every mobile route, a saved theme after reload, and an unsaved open form surviving a cross-tab theme change. No browser console errors were observed. All backend source hashes are unchanged.
