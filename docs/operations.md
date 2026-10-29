@@ -25,7 +25,7 @@ Do not run `down -v` for an update: it deletes the administrator account, encryp
 
 ## IP changes and certificates
 
-Run `sudo ./scripts/setup-pi.sh` again and supply the Pi's current private IPv4. Setup preserves an existing account and CA, refreshes its server certificate, and verifies HTTPS against that CA. The generated `homebase-….local` hostname is persisted with the data volume. Discovery pauses after a network change; start it again from the dashboard when appropriate.
+Run `sudo bash scripts/setup-pi.sh` again and supply the Pi's current private IPv4. Setup preserves an existing account and CA, refreshes its server certificate, and verifies HTTPS against that CA. The generated `homebase-….local` hostname is persisted with the data volume. Discovery pauses after a network change; start it again from the dashboard when appropriate.
 
 Copy only `homebase-rootCA.crt` to clients and follow the manual trust steps in [the terminal guide](../START-HERE.md). Do not bypass warnings. A certificate warning can indicate an untrusted CA, wrong address, expired certificate or an incorrect system clock.
 

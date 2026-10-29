@@ -32,7 +32,7 @@
       <article class="step"><h3>2. Prepare Docker</h3><p>Docker Engine and Compose v2 must already be installed. Their host installation is an explicit action you perform using <a href="https://docs.docker.com/engine/install/debian/">Docker's official Debian guide</a> for 64-bit Raspberry Pi OS. The app script does not install host packages.</p><pre>uname -m
 sudo docker compose version</pre></article>
       <article class="step"><h3>3. Run the interactive setup</h3><pre>cd homebase-os
-sudo ./scripts/setup-pi.sh</pre><p>Enter the Pi's private IPv4 address and choose an administrator username. The hidden password prompt has no default password. Setup builds the image, prepares the account and TLS, then starts the authenticated HTTPS service.</p></article>
+sudo bash scripts/setup-pi.sh</pre><p>Enter the Pi's private IPv4 address and choose an administrator username. The hidden password prompt has no default password. Setup builds the image, prepares the account and TLS, then starts the authenticated HTTPS service.</p></article>
       <article class="step"><h3>4. Trust your own CA</h3><p>Copy only <code>homebase-rootCA.crt</code> to your client devices over a trusted connection and compare its printed SHA-256 file hash. Import and trust it yourself in macOS Keychain Access or iPhone/iPad Certificate Trust Settings. Then open the printed HTTPS IP URL or persistent <code>homebase-….local</code> name.</p><div class="note">Never bypass certificate warnings. The private CA stays outside the running dashboard's mounts. No public hosting, firewall rule or router forwarding is created.</div></article>
     </div></div>
   </section>
