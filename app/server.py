@@ -264,7 +264,18 @@ class Handler(BaseHTTPRequestHandler):
             expected = ("https" if self.app.secure else "http") + "://" + raw_host
             if not hmac.compare_digest(origin, expected):
                 raise APIError(403, "Cross-origin requests are blocked.", "origin_rejected")
-        if self.headers.get("Sec-Fetch-Site") in {"cross-site", "same-site"}:
+        # The public HTML shell contains no account or device data. A normal
+        # top-level visit from another page/local alias may carry same-site or
+        # cross-site metadata; allow only that document entry point. API calls,
+        # embedded documents, asset fetches and every mutation keep the strict
+        # origin policy above and the authentication/CSRF checks below.
+        entry_navigation = (
+            self.command in {"GET","HEAD"}
+            and unquote(urlsplit(self.path).path) in {"/","/index.html"}
+            and self.headers.get("Sec-Fetch-Mode")=="navigate"
+            and self.headers.get("Sec-Fetch-Dest")=="document"
+        )
+        if self.headers.get("Sec-Fetch-Site") in {"cross-site", "same-site"} and not entry_navigation:
             raise APIError(403, "Cross-site requests are blocked.", "origin_rejected")
 
     def body(self) -> dict:
