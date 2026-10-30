@@ -201,10 +201,13 @@ Then visit the printed `https://PI_ADDRESS:8420` URL in your browser on the same
 
 ## 11. Sign in and make the dashboard yours
 
+The full-screen sign-in page appears whenever you are signed out. Each installation currently supports one local administrator; there is no public registration, hosted account service or additional-user signup. Anyone installing their own copy creates their own account in the terminal wizard. Other devices accessing that same installation use its existing administrator account.
+
 Sign in using the dashboard account you created in setup. This is not your SSH account unless you deliberately chose the same username; keep their passwords separate.
 
 - Open the top-left workspace menu, enter a display name and save. Reload once to confirm it persisted.
 - Open **Settings → Security**. The app reports its account, encrypted vault, HTTPS, key permissions and action-approval controls. This is app-security information, not an assessment of your whole home.
+- To disable an enabled authenticator later, choose **Settings → Security → Disable 2FA**, enter your current password and a fresh unused authenticator code, then confirm. All sessions are signed out; sign back in with your password. Without the current authenticator, this flow cannot bypass two-factor authentication.
 - Enable two-factor authentication if wanted. Save the authenticator setup/backup securely before confirming a fresh six-digit code. There is no email recovery service; an offline password reset does not bypass a configured second factor.
 - Open **Devices**. Automatic read-only discovery can find supported advertisements on the visible network. Cached neighbors can remain unverified; a large count does not prove those devices are online. Guest isolation, VLANs, sleeping devices and disabled discovery services can limit results.
 - Live receive/send values are current traffic through the Pi's interface. They are not the maximum download speed of your internet plan.

@@ -152,10 +152,12 @@ shasum -a 256 ~/Downloads/homebase-rootCA.crt
 </ul>
 <p>Then visit the printed <code>https://PI_ADDRESS:8420</code> URL in your browser on the same network. A browser privacy warning means trust, hostname, date/time or IP configuration still needs fixing. Do not click through it as a substitute for correct setup.</p>
 <h2 id="11-sign-in-and-make-the-dashboard-yours">11. Sign in and make the dashboard yours</h2>
+<p>The full-screen sign-in page appears whenever you are signed out. Each installation currently supports one local administrator; there is no public registration, hosted account service or additional-user signup. Anyone installing their own copy creates their own account in the terminal wizard. Other devices accessing that same installation use its existing administrator account.</p>
 <p>Sign in using the dashboard account you created in setup. This is not your SSH account unless you deliberately chose the same username; keep their passwords separate.</p>
 <ul>
 <li>Open the top-left workspace menu, enter a display name and save. Reload once to confirm it persisted.</li>
 <li>Open <strong>Settings → Security</strong>. The app reports its account, encrypted vault, HTTPS, key permissions and action-approval controls. This is app-security information, not an assessment of your whole home.</li>
+<li>To disable an enabled authenticator later, choose <strong>Settings → Security → Disable 2FA</strong>, enter your current password and a fresh unused authenticator code, then confirm. All sessions are signed out; sign back in with your password. Without the current authenticator, this flow cannot bypass two-factor authentication.</li>
 <li>Enable two-factor authentication if wanted. Save the authenticator setup/backup securely before confirming a fresh six-digit code. There is no email recovery service; an offline password reset does not bypass a configured second factor.</li>
 <li>Open <strong>Devices</strong>. Automatic read-only discovery can find supported advertisements on the visible network. Cached neighbors can remain unverified; a large count does not prove those devices are online. Guest isolation, VLANs, sleeping devices and disabled discovery services can limit results.</li>
 <li>Live receive/send values are current traffic through the Pi's interface. They are not the maximum download speed of your internet plan.</li>
