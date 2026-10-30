@@ -45,7 +45,7 @@ function harness(respond = () => ({})) {
   source = source.replace(/^import .*?;\s*/gm, '');
   source = 'const icon = () => "<svg></svg>";\n' + source;
   source = source.replace(/^await boot\(\);\s*$/m, '');
-  source += '\nglobalThis.ui = { state, api, tvCard, smartTVsView, tvRemote, tvKeyboard, remoteCapabilities, loadEntities, automationsView, propose, date, deploymentSettings, camerasView, lanDetails, networkIdentityBadge, handleAction, shell, stats, securitySettings, helpModal, workspaceModal, connectionModal, pairingModal, devicesView, overview, prepareIntegrationValues, sendTVCommand };';
+  source += '\nglobalThis.ui = { state, api, tvCard, smartTVsView, tvRemote, tvKeyboard, remoteCapabilities, loadEntities, automationsView, propose, date, deploymentSettings, camerasView, lanDetails, networkIdentityBadge, handleAction, shell, stats, securitySettings, helpModal, workspaceModal, connectionModal, pairingModal, devicesView, overview, prepareIntegrationValues, sendTVCommand, authView, render };';
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox, { filename: 'app.js', timeout: 1000 });
   sandbox.ui.state.status = { authenticated: true, csrfToken: 'fixture-csrf', user: 'fixture' };
@@ -583,4 +583,42 @@ test('theme action changes appearance without API calls or resetting active appl
   assert.equal(elements.get('#app').innerHTML,'Existing page and typed values');
   assert.equal(elements.get('#modal-root').innerHTML,'Existing pairing form');
   assert.equal(requests.length,0);
+});
+
+
+test('signed-out rendering is a full-screen account entry, without dashboard controls', () => {
+  const { ui, elements } = harness();
+  ui.state.status = { authenticated: false, setupRequired: false };
+  ui.render();
+  const html = elements.get('#app').innerHTML;
+  assert.match(html, /class="auth-screen"/);
+  assert.match(html, /id="auth-form"/);
+  assert.match(html, /autocomplete="current-password"/);
+  assert.match(html, /one-time-code/);
+  assert.doesNotMatch(html, /class="sidebar|Live receive traffic|class="setup-banner/);
+  assert.match(html, /data-theme-toggle/);
+  assert.match(html, /Additional user accounts and public registration are not supported/);
+});
+
+test('first account screen permits local setup and explains terminal setup to remote visitors', () => {
+  const { ui } = harness();
+  ui.state.status = { setupRequired: true, setupLocalAllowed: true };
+  assert.match(ui.authView(), /Confirm password/);
+  assert.match(ui.authView(), /Create secure account/);
+  ui.state.status.setupLocalAllowed = false;
+  assert.doesNotMatch(ui.authView(), /id="auth-form"/);
+  assert.match(ui.authView(), /Remote account creation is disabled/);
+});
+
+test('disabling 2FA asks for password and a fresh code without disabling anything on open', async () => {
+  const { ui, requests, elements } = harness();
+  ui.state.settings.security = { mfaEnabled: true };
+  assert.match(ui.securitySettings(), /data-action="mfa-disable"/);
+  await ui.handleAction('mfa-disable', {});
+  const html = elements.get('#modal-root').innerHTML;
+  assert.match(html, /id="mfa-disable-form"/);
+  assert.match(html, /autocomplete="current-password"/);
+  assert.match(html, /Fresh authenticator code/);
+  assert.match(html, /All sessions will be signed out/);
+  assert.equal(requests.length, 0);
 });

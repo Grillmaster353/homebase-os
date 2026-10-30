@@ -71,6 +71,25 @@ class APITests(unittest.TestCase):
         self.assertEqual(self.request("/api/discovery", "POST", {}, {"X-CSRF-Token": "wrong"})[0], 403)
         self.assertEqual(self.request("/%2e%2e/data/master.key")[0], 403)
 
+    def test_top_level_dashboard_visits_are_allowed_without_relaxing_api_or_csrf_policy(self):
+        self.setup_account()
+        for site in ('same-site','cross-site'):
+            nav={'Sec-Fetch-Site':site,'Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'}
+            for path in ('/','/index.html'):
+                status,body,headers=self.request(path,headers=nav)
+                self.assertEqual(status,200,body)
+                self.assertIn(b'<!doctype html>',body)
+                self.assertEqual(headers['X-Frame-Options'],'DENY')
+            self.assertEqual(self.request('/api/overview',headers=nav)[0],403)
+            self.assertEqual(self.request('/api/discovery','POST',{},nav)[0],403)
+            self.assertEqual(self.request('/api/auth/login','POST',{},nav)[0],403)
+            self.assertEqual(self.request('/app.js',headers=nav)[0],403)
+            self.assertEqual(self.request('/',headers={**nav,'Sec-Fetch-Dest':'iframe'})[0],403)
+            self.assertEqual(self.request('/',headers={**nav,'Sec-Fetch-Mode':'cors','Sec-Fetch-Dest':'empty'})[0],403)
+            self.assertEqual(self.request('/',headers={'Sec-Fetch-Site':site})[0],403)
+            self.assertEqual(self.request('/',headers={**nav,'Host':'evil.example:8420'})[0],403)
+            self.assertEqual(self.request('/',headers={**nav,'Origin':'https://evil.example'})[0],403)
+
     def test_encrypted_credentials_redaction_and_edit(self):
         self.setup_account()
         payload = {"name": "Living room", "type": "homeassistant", "host": "http://192.168.1.3:8123", "token": "integration-secret-token"}
@@ -239,3 +258,50 @@ class APITests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MFADisableTests(unittest.TestCase):
+    setUp = APITests.setUp
+    tearDown = APITests.tearDown
+    request = APITests.request
+    setup_account = APITests.setup_account
+    # Inherit the real HTTP fixture, without rerunning its unrelated test methods.
+    def setup_mfa(self):
+        from app.security import new_totp_secret, totp
+        self.setup_account()
+        self.secret = new_totp_secret()
+        with self.app.vault.lock:
+            self.app.vault.data['account'].update(mfaSecret=self.secret, mfaLastCounter=-1,
+                                                  mfaPending='pending', mfaPendingUntil=123)
+            self.app.vault.save()
+        return totp(self.secret)
+
+    def test_disable_requires_password_unused_code_and_csrf_then_revokes_every_session(self):
+        code = self.setup_mfa()
+        token, _ = self.app.sessions.create('owner')
+        payload = {'password': 'a unique password for my secure home', 'code': code}
+        self.assertEqual(self.request('/api/auth/mfa/disable','POST',payload,{'X-CSRF-Token':'wrong'})[0],403)
+        self.assertEqual(self.request('/api/auth/mfa/disable','POST',{**payload,'password':'wrong'})[0],401)
+        self.assertEqual(self.request('/api/auth/mfa/disable','POST',{**payload,'code':'invalid'})[0],401)
+        self.assertIn('mfaSecret',self.app.vault.data['account'])
+        status, result, headers = self.request('/api/auth/mfa/disable','POST',payload)
+        self.assertEqual(status,200,result)
+        self.assertFalse(result['mfaEnabled'])
+        self.assertIn('Max-Age=0',headers['Set-Cookie'])
+        self.assertIsNone(self.app.sessions.get(token))
+        self.assertEqual(self.request('/api/overview')[0],401)
+        for key in ('mfaSecret','mfaLastCounter','mfaPending','mfaPendingUntil'):
+            self.assertNotIn(key,self.app.vault.data['account'])
+        self.assertEqual(self.request('/api/auth/login','POST',{'username':'owner','password':payload['password']})[0],200)
+        from app.security import Vault
+        self.assertNotIn('mfaSecret',Vault(self.app.vault.directory).data['account'])
+
+    def test_disable_rejects_replayed_code_and_limits_attempts(self):
+        import time
+        code=self.setup_mfa()
+        self.app.vault.data['account']['mfaLastCounter']=int(time.time()//30)
+        payload={'password':'a unique password for my secure home','code':code}
+        for _ in range(5):
+            self.assertEqual(self.request('/api/auth/mfa/disable','POST',payload)[0],401)
+        self.assertEqual(self.request('/api/auth/mfa/disable','POST',payload)[0],429)
+        self.assertIn('mfaSecret',self.app.vault.data['account'])
