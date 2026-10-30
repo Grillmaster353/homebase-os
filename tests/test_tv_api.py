@@ -107,6 +107,40 @@ class TVAPITests(unittest.TestCase):
         self.assertEqual(status, 400, data)
         self.assertEqual(self.app.integrations(), [])
 
+    def test_hisense_does_not_implicitly_select_android(self):
+        status, data = self.request('/api/integrations', {'type':'hisense','name':'Hisense','host':'192.168.1.50','connectionMode':'direct'})
+        self.assertEqual(status,400,data)
+        self.assertEqual(self.app.integrations(),[])
+
+    def test_vidaa_profile_is_encrypted_redacted_and_change_invalidates_pairing(self):
+        profile = {'clientId':'fixture-client','password':'fixture-mqtt-password','privateKeyPem':'fixture-private-key'}
+        with patch('app.vidaa.validate_profile',side_effect=lambda value:value):
+            tv, body = self.save_tv(type='hisense',protocol='vidaa',vidaaProfile=json.dumps(profile))
+            self.assertTrue(tv['hasVidaaProfile'])
+            self.assertNotIn('vidaaProfile',tv)
+            self.assertNotIn('fixture-mqtt-password',self.app.vault.path.read_bytes().decode('latin1'))
+            self.assertNotIn('fixture-private-key',self.app.safe_error(ValueError('fixture-private-key failed')))
+            with self.app.vault.lock:
+                self.app.vault.data['integrations'][0]['tvCredentials']={'authorized':True}
+            status, data = self.request('/api/integrations',{**body,'id':tv['id'],'vidaaProfile':''})
+            self.assertEqual(status,200,data)
+            self.assertEqual(self.app.integration(tv['id'])['vidaaProfile'],profile)
+            self.assertTrue(self.app.integration(tv['id'])['tvCredentials'])
+            self.request('/api/integrations',{**body,'id':tv['id'],'vidaaProfile':json.dumps({**profile,'password':'replacement-secret'})})
+            self.assertNotIn('tvCredentials',self.app.integration(tv['id']))
+
+    def test_inflight_vidaa_profile_change_cannot_restore_old_credentials(self):
+        with patch('app.vidaa.validate_profile',side_effect=lambda value:value):
+            tv, _ = self.save_tv(type='hisense',protocol='vidaa',vidaaProfile=json.dumps({'password':'old-identity'}))
+        def finish_after_profile_changes(*args,**kwargs):
+            with self.app.vault.lock:
+                self.app.vault.data['integrations'][0]['vidaaProfile']={'password':'new-identity'}
+            return {'status':'paired','protocol':'vidaa','credentials':{'token':'old-private-token'}}
+        with patch('app.direct_tv.finish_pairing',side_effect=finish_after_profile_changes):
+            status, data = self.request(f"/api/tvs/{tv['id']}/pair/finish", {'approved':True,'pairingId':'fixture','code':'1234'})
+        self.assertEqual(status,409,data)
+        self.assertNotIn('tvCredentials',self.app.integration(tv['id']))
+
     def test_inflight_pairing_cannot_restore_credentials_after_port_change(self):
         tv, _ = self.save_tv(port=6466)
         def finish_after_endpoint_changes(*args, **kwargs):

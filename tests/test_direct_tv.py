@@ -79,6 +79,41 @@ class DirectTVTests(unittest.TestCase):
                 with self.assertRaisesRegex(direct_tv.TVError,'approval'):
                     call()
 
+    def test_hisense_requires_platform_and_vidaa_uses_separate_adapter(self):
+        with self.assertRaisesRegex(direct_tv.TVError, 'actual Hisense'):
+            direct_tv.protocol_for(self.config('hisense'))
+        self.assertEqual(direct_tv.protocol_for(self.config('vidaa', type='hisense')), 'vidaa')
+        self.assertEqual(direct_tv.DEFAULT_PORTS['vidaa'], 36669)
+        self.assertNotIn('play_pause', direct_tv.SUPPORTED_COMMANDS['vidaa'])
+
+    def test_retry_closes_previous_pairing_instead_of_competing_for_tv_pin(self):
+        module = types.SimpleNamespace(AndroidTVRemote=FakeAndroidRemote)
+        with patch('app.direct_tv._dependency',return_value=module):
+            first = direct_tv.start_pairing(self.config(),approved=True)
+            previous = FakeAndroidRemote.instances[-1]
+            second = direct_tv.start_pairing(self.config(),approved=True)
+            self.assertTrue(previous.closed)
+            self.assertNotIn(first['pairingId'],direct_tv._SESSIONS)
+            self.assertIn(second['pairingId'],direct_tv._SESSIONS)
+
+    def test_vidaa_profile_is_bound_without_storing_plaintext_in_session_binding(self):
+        first = self.config('vidaa',type='hisense',vidaaProfile={'password':'fixture-one'})
+        second = {**first,'vidaaProfile':{'password':'fixture-two'}}
+        binding = direct_tv._binding(first,'192.168.1.20','vidaa')
+        self.assertNotEqual(binding,direct_tv._binding(second,'192.168.1.20','vidaa'))
+        self.assertNotIn('fixture-one',binding)
+
+    def test_paired_vidaa_check_verifies_saved_login_without_starting_pairing(self):
+        profile, credentials = {'clientId':'fixture'}, {'paired':True}
+        config = self.config('vidaa',type='hisense',tvCredentials=credentials)
+        with patch('app.direct_tv._vidaa_profile',return_value=profile), patch('app.vidaa.verify_connection',return_value={'authenticated':True,'message':'Verified without commands'}) as verify, patch('app.vidaa.start_pairing') as start, patch('app.direct_tv.socket.create_connection') as tcp:
+            result = direct_tv.test_tv(config)
+        self.assertTrue(result['authenticated'])
+        self.assertTrue(result['paired'])
+        verify.assert_called_once_with('192.168.1.20',36669,profile,credentials)
+        start.assert_not_called()
+        tcp.assert_not_called()
+
     def test_local_cleartext_is_explicit_and_https_never_silently_downgrades(self):
         for protocol in ('samsung','webos','roku'):
             with self.subTest(protocol=protocol):

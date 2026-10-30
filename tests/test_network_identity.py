@@ -9,6 +9,11 @@ from app.network_identity import CACHE_SECONDS, DEFAULT_SETTINGS, LOOKUP_URL, Ne
 
 
 class NetworkIdentityTests(unittest.TestCase):
+    def test_requested_provider_legal_names_and_explicit_router_brands(self):
+        for name,id in [('VOCUS PTY LTD','vocus'),('FLIP TV PTY LIMITED','flip'),('SingTel Optus Pty Limited','optus')]:
+            self.assertEqual(canonical_name(name)['id'],id)
+        self.assertEqual(canonical_name('Telstra','router')['id'],'telstra')
+        self.assertEqual(canonical_name('Optus','router')['id'],'optus')
     def test_telstra_and_bigpond_reported_names_share_the_bundled_logo_id(self):
         for name in ('Telstra', 'Telstra Internet Pty Ltd', 'Telstra Corporation Limited', 'Telstra Limited', 'BigPond', 'Bigpond Internet'):
             with self.subTest(name=name):

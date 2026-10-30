@@ -5,7 +5,8 @@ import unittest
 from unittest.mock import patch
 
 from app.monitor import (_advertised_endpoint, _discover_advertisements,
-    _merge_device, _onvif_probe, _parse_onvif_response, _parse_ssdp_response)
+    _enrich_ssdp_devices, _merge_device, _onvif_probe, _parse_onvif_response,
+    _parse_ssdp_description, _parse_ssdp_response, _ssdp_metadata)
 
 
 PROBE_ID = "uuid:12345678-1234-1234-1234-123456789abc"
@@ -22,6 +23,17 @@ def response(message_id=PROBE_ID, types="dn:NetworkVideoTransmitter",
         f'<d:Types>{html.escape(types)}</d:Types><d:Scopes>{html.escape(scopes)}</d:Scopes>'
         f'<d:XAddrs>{html.escape(endpoint)}</d:XAddrs>'
         f'</d:ProbeMatch></d:ProbeMatches></s:Body></s:Envelope>').encode()
+
+
+def tv_description(name="Hisense VIDAA TV", manufacturer="SmartTV", model="Renderer",
+                   description="#CAP#\nplatform=1\nvoice=2\nbrand=his\nvidaa_s=1"):
+    return ('<root xmlns="urn:schemas-upnp-org:device-1-0"><device>'
+        '<deviceType>urn:schemas-upnp-org:device:MediaRenderer:1</deviceType>'
+        f'<friendlyName>{html.escape(name)}</friendlyName>'
+        f'<manufacturer>{html.escape(manufacturer)}</manufacturer>'
+        f'<modelName>{html.escape(model)}</modelName>'
+        f'<modelDescription>{html.escape(description)}</modelDescription>'
+        '</device></root>').encode()
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -85,6 +97,101 @@ class DiscoveryTests(unittest.TestCase):
         self.assertIsNone(_parse_ssdp_response(ssdp, "8.8.8.8"))
         tv = _parse_ssdp_response(b"HTTP/1.1 200 OK\r\nSERVER:Samsung\r\nST:MediaRenderer\r\n\r\n", "192.168.1.26")
         self.assertEqual(tv["type"], "tv")
+
+    def test_vidaa_metadata_supplies_actual_name_and_platform_without_pairing(self):
+        packet = b"HTTP/1.1 200 OK\r\nST:urn:schemas-upnp-org:device:MediaRenderer:1\r\nLOCATION:http://192.168.1.7:38400/MediaServer/rendererdevicedesc.xml\r\n\r\n"
+        candidate = _parse_ssdp_response(packet, "192.168.1.7", "192.168.1.0/24")
+        self.assertNotIn("suggestedProtocol", candidate)
+        with patch("app.integrations.safe_request", return_value=tv_description()) as request:
+            found = _ssdp_metadata(candidate)
+        request.assert_called_once_with("http://192.168.1.7:38400/MediaServer/rendererdevicedesc.xml", timeout=.75, max_bytes=32768)
+        self.assertEqual(found["name"], "Hisense VIDAA TV")
+        self.assertEqual(found["manufacturer"], "SmartTV")
+        self.assertEqual(found["modelName"], "Renderer")
+        self.assertEqual(found["vendor"], "Hisense")
+        self.assertTrue(found["tvCandidate"])
+        self.assertEqual(found["suggestedIntegration"], "hisense")
+        self.assertEqual(found["suggestedProtocol"], "vidaa")
+        self.assertEqual(found["suggestedHost"], "http://192.168.1.7:36669")
+        self.assertNotIn("tvCredentials", found)
+
+    def test_vidaa_advertisement_or_description_marker_is_positive_evidence(self):
+        for hint in ("VIDAA/1.0", "Hisense vidaa_s=1"):
+            found = _parse_ssdp_response(f"HTTP/1.1 200 OK\r\nSERVER:{hint}\r\nST:MediaRenderer\r\n\r\n".encode(), "192.168.1.7")
+            self.assertEqual(found["suggestedProtocol"], "vidaa")
+        candidate = _parse_ssdp_response(b"HTTP/1.1 200 OK\r\nST:MediaRenderer\r\nLOCATION:http://192.168.1.7/device.xml\r\n\r\n", "192.168.1.7")
+        with patch("app.integrations.safe_request", return_value=tv_description(name="Living room", description="brand=his vidaa_s=1")):
+            self.assertEqual(_ssdp_metadata(candidate)["suggestedProtocol"], "vidaa")
+
+    def test_hisense_brand_and_renderer_filename_never_imply_android_or_vidaa(self):
+        packet = b"HTTP/1.1 200 OK\r\nSERVER:Hisense\r\nST:MediaRenderer\r\nLOCATION:http://192.168.1.20:38400/MediaServer/rendererdevicedesc.xml\r\n\r\n"
+        candidate = _parse_ssdp_response(packet, "192.168.1.20")
+        self.assertTrue(candidate["tvCandidate"])
+        self.assertEqual(candidate["suggestedIntegration"], "hisense")
+        self.assertEqual(candidate["suggestedProtocol"], "")
+        with patch("app.integrations.safe_request", return_value=tv_description(name="Hisense TV", manufacturer="Hisense", description="Media renderer")):
+            found = _ssdp_metadata(candidate)
+        self.assertEqual(found["suggestedProtocol"], "")
+        self.assertEqual(found["suggestedHost"], "http://192.168.1.20")
+
+    def test_ssdp_metadata_rejects_foreign_urls_and_does_not_follow_embedded_urls(self):
+        for endpoint in ("http://192.168.1.99/device.xml", "http://tv.local/device.xml",
+                "http://8.8.8.8/device.xml", "http://user:pass@192.168.1.7/device.xml"):
+            candidate = {"ip":"192.168.1.7", "descriptionUrl":endpoint, "type":"tv"}
+            with patch("app.integrations.safe_request") as request:
+                self.assertEqual(_ssdp_metadata(candidate), candidate)
+                request.assert_not_called()
+        candidate = {"ip":"192.168.1.7", "descriptionUrl":"http://192.168.1.7/device.xml", "type":"tv"}
+        payload = tv_description().replace(b"</device>", b"<presentationURL>http://8.8.8.8/admin</presentationURL><URLBase>http://8.8.8.8/</URLBase></device>")
+        with patch("app.integrations.safe_request", return_value=payload) as request:
+            self.assertEqual(_ssdp_metadata(candidate)["suggestedProtocol"], "vidaa")
+            self.assertEqual(request.call_count, 1)
+        with patch("app.integrations.safe_request", side_effect=ValueError("Redirect refused")):
+            self.assertEqual(_ssdp_metadata(candidate), candidate)
+
+    def test_ssdp_description_rejects_entities_size_depth_and_element_flood(self):
+        attacks = [b'<!DOCTYPE root [<!ENTITY a "VIDAA">]>' + tv_description(),
+            b'<!ENTITY a SYSTEM "file:///etc/passwd">' + tv_description(),
+            b"a" * 32769, tv_description().decode().encode("utf-16"), b"not XML",
+            tv_description().replace(b"<device>", b"<device>" + b"<x>" * 17).replace(b"</device>", b"</x>" * 17 + b"</device>"),
+            tv_description().replace(b"</device>", b"<x/>" * 257 + b"</device>")]
+        for payload in attacks:
+            with self.subTest(length=len(payload)):
+                self.assertEqual(_parse_ssdp_description(payload), {})
+
+    def test_ssdp_metadata_requests_are_capped_and_only_known_local_urls_are_used(self):
+        devices = {f"192.168.1.{i}":{"ip":f"192.168.1.{i}", "name":f"Device {i}",
+            "type":"tv", "descriptionUrl":f"http://192.168.1.{i}/device.xml"} for i in range(10, 30)}
+        with patch("app.monitor._ssdp_metadata", side_effect=lambda candidate: candidate) as metadata:
+            _enrich_ssdp_devices(devices)
+        self.assertEqual(metadata.call_count, 8)
+        self.assertEqual(len(devices), 20)
+
+    def test_android_mdns_name_and_protocol_survive_generic_hisense_metadata(self):
+        android = {"id":"192.168.1.72", "ip":"192.168.1.72", "name":"Kitchen TV",
+            "type":"tv", "vendor":"Google / Android TV", "tvCandidate":True,
+            "source":"TV mDNS advertisement", "suggestedProtocol":"androidtv",
+            "suggestedIntegration":"androidtv", "host":"http://192.168.1.72:6466",
+            "suggestedHost":"http://192.168.1.72:6466"}
+        generic = _parse_ssdp_response(b"HTTP/1.1 200 OK\r\nSERVER:Hisense\r\nST:MediaRenderer\r\n\r\n", "192.168.1.72")
+        for old, new in ((android, generic), (generic, android)):
+            found = _merge_device(old, new)
+            self.assertEqual(found["name"], "Kitchen TV")
+            self.assertEqual(found["suggestedProtocol"], "androidtv")
+            self.assertEqual(found["suggestedHost"], "http://192.168.1.72:6466")
+        enriched = {**generic, "name":"Hisense VIDAA TV", "nameSource":"SSDP description", "suggestedProtocol":"vidaa"}
+        self.assertEqual(_merge_device(android, enriched)["suggestedProtocol"], "androidtv")
+        self.assertEqual(_merge_device(android, enriched)["name"], "Kitchen TV")
+
+    def test_generic_ssdp_does_not_erase_previously_identified_protocol_or_name(self):
+        strong = {"ip":"192.168.1.7", "name":"Living room", "nameSource":"SSDP description", "type":"tv",
+            "tvCandidate":True, "source":"SSDP response", "suggestedProtocol":"vidaa",
+            "suggestedIntegration":"hisense", "suggestedHost":"http://192.168.1.7:36669", "host":"http://192.168.1.7:36669"}
+        generic = _parse_ssdp_response(b"HTTP/1.1 200 OK\r\nSERVER:Hisense\r\nST:MediaRenderer\r\n\r\n", "192.168.1.7")
+        found = _merge_device(strong, generic)
+        self.assertEqual(found["name"], "Living room")
+        self.assertEqual(found["suggestedProtocol"], "vidaa")
+        self.assertEqual(found["host"], "http://192.168.1.7:36669")
 
     def test_camera_identity_survives_protocol_response_order(self):
         camera = _parse_onvif_response(response(), "192.168.1.25", {PROBE_ID})[0]
