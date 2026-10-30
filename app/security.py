@@ -231,7 +231,7 @@ class RateLimiter:
             self.entries.pop(key, None)
 
 
-SECRET_FIELDS = {"password", "token", "apikey", "api_key", "secret", "clientkey", "client_key", "pairingtoken", "authorization", "mfasecret", "mfapending", "tvcredentials"}
+SECRET_FIELDS = {"password", "token", "apikey", "api_key", "secret", "clientkey", "client_key", "pairingtoken", "authorization", "mfasecret", "mfapending", "tvcredentials", "vidaaprofile"}
 
 
 def redact(value):

@@ -43,6 +43,10 @@ class Application:
         self.identity_limiter = RateLimiter(5, 60)
         self.pair_limiter = RateLimiter(12, 60)
         self.pair_slots = threading.BoundedSemaphore(2)
+        self.tv_manual_limiter = RateLimiter(120, 60)
+        self.tv_manual_slots = threading.BoundedSemaphore(2)
+        self.tv_manual_locks = {}
+        self.tv_manual_lock_guard = threading.Lock()
         self.chat_slots = threading.BoundedSemaphore(2)
         self.approved_reads: dict[str, dict] = {}
         self.monitor = monitor
@@ -64,7 +68,7 @@ class Application:
     def overview(self) -> dict:
         result = self.monitor.overview()
         with self.vault.lock:
-            result.update(integrations=redact(copy.deepcopy(self.vault.data["integrations"])), events=copy.deepcopy(self.vault.data["events"][:30]), actions=copy.deepcopy(self.vault.data["actions"][-50:]), lan=copy.deepcopy(self.lan))
+            result.update(integrations=[self.public_integration(i) for i in self.vault.data["integrations"]], events=copy.deepcopy(self.vault.data["events"][:30]), actions=copy.deepcopy(self.vault.data["actions"][-50:]), lan=copy.deepcopy(self.lan))
         result["networkIdentity"] = self.network_identity.snapshot(result)
         result["security"] = self.security_status()
         return result
@@ -84,6 +88,18 @@ class Application:
     def integrations(self) -> list:
         with self.vault.lock:
             return copy.deepcopy(self.vault.data["integrations"])
+
+    @staticmethod
+    def public_integration(config):
+        result = redact(copy.deepcopy(config))
+        from . import direct_tv
+        if direct_tv.is_direct(config):
+            try:
+                protocol = direct_tv.protocol_for(config)
+                result["supportedCommands"] = list(direct_tv.SUPPORTED_COMMANDS[protocol])
+            except direct_tv.TVError:
+                result["supportedCommands"] = []
+        return result
 
     def integration(self, identity: str) -> dict:
         item = next((item for item in self.integrations() if item["id"] == identity), None)
@@ -122,7 +138,7 @@ class Application:
                 for key, value in obj.items():
                     if key.lower() in {"password", "token", "apikey", "api_key", "secret", "clientkey", "authorization", "tvcredentials"} and isinstance(value, str) and value:
                         yield value
-                    elif key.lower() == "tvcredentials":
+                    elif key.lower() in {"tvcredentials", "vidaaprofile"}:
                         def strings(item):
                             if isinstance(item, str) and item:
                                 yield item
@@ -337,7 +353,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/devices":
             self.send_json(200, {"devices": self.app.monitor.overview().get("devices", [])})
         elif path == "/api/integrations":
-            self.send_json(200, {"integrations": redact(self.app.integrations())})
+            self.send_json(200, {"integrations": [self.app.public_integration(i) for i in self.app.integrations()]})
         elif path == "/api/actions":
             with self.app.vault.lock:
                 actions = copy.deepcopy(self.app.vault.data["actions"][-100:])
@@ -475,6 +491,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, {"deleted": True})
         elif re.fullmatch(r"/api/tvs/[^/]+/pair/(start|finish|cancel)", path):
             self.pair_tv(path, body)
+        elif re.fullmatch(r"/api/tvs/[^/]+/command", path):
+            self.manual_tv_command(path, body)
         elif path == "/api/settings":
             self.save_settings(body)
         elif path == "/api/actions":
@@ -545,6 +563,8 @@ class Handler(BaseHTTPRequestHandler):
             if not re.fullmatch(r"[A-Za-z0-9.-]{1,253}", parsed.hostname):
                 raise APIError(400, "Invalid local hostname.")
         accepted = {"username", "password", "token", "port", "entityId", "remoteEntityId", "homeAssistantId", "channel", "snapshotChannel", "apiKey", "model", "protocol", "monitoringPath", "basePath", "connectionMode", "allowInsecureLocalControl", "apiPort", "pairPort"}
+        if "manualControlEnabled" in body and type(body["manualControlEnabled"]) is not bool:
+            raise APIError(400, "Manual TV control permission must be a JSON boolean.")
         config = {key: value for key, value in body.items() if key in accepted and isinstance(value, (str, int, float, bool))}
         for value in config.values():
             if isinstance(value, str) and len(value) > 8000:
@@ -555,10 +575,21 @@ class Handler(BaseHTTPRequestHandler):
             if mode not in {"direct", "homeassistant"}:
                 raise APIError(400, "Choose a direct TV connection or Home Assistant.")
             if mode == "direct":
-                protocol = config.get("protocol") or ("androidtv" if kind == "hisense" else kind)
-                if protocol not in {"samsung", "androidtv", "appletv", "roku", "webos"}:
-                    raise APIError(400, "Choose a supported TV platform. VIDAA-only models do not have a universal direct adapter.")
+                if "manualControlEnabled" in body:
+                    config["manualControlEnabled"] = body["manualControlEnabled"]
+                protocol = config.get("protocol") or ("" if kind == "hisense" else kind)
+                if protocol not in {"samsung", "androidtv", "appletv", "roku", "webos", "vidaa"}:
+                    raise APIError(400, "Choose the TV's actual platform: VIDAA, Android/Google TV, Roku, Samsung, Apple TV, or LG webOS.")
                 config["protocol"] = protocol
+                if protocol == "vidaa" and body.get("vidaaProfile"):
+                    from . import vidaa
+                    raw_profile = body["vidaaProfile"]
+                    if not isinstance(raw_profile, str) or len(raw_profile) > 65536:
+                        raise APIError(400, "The VIDAA credential profile must be a JSON object under 64 KB.")
+                    try:
+                        config["vidaaProfile"] = vidaa.validate_profile(json.loads(raw_profile))
+                    except (ValueError, TypeError):
+                        raise APIError(400, "Invalid VIDAA profile. Supply an authorized client ID, MQTT credentials, client certificate/key, and a trusted CA or approved server fingerprint. See docs/TV.md.") from None
                 config["allowInsecureLocalControl"] = body.get("allowInsecureLocalControl") is True
                 for key in ("homeAssistantId", "entityId", "remoteEntityId", "token"):
                     config.pop(key, None)
@@ -580,6 +611,8 @@ class Handler(BaseHTTPRequestHandler):
                     # Never carry a TV's device identity through another
                     # integration type and later reuse it on a new endpoint.
                     existing.pop("tvCredentials", None)
+                    existing.pop("vidaaProfile", None)
+                    existing["manualControlEnabled"] = False
                 if kind in tv_types and config.get("connectionMode") == "direct":
                     # Pairing credentials belong to one endpoint and protocol.
                     # Changing those requires pairing again; never carry a
@@ -587,13 +620,18 @@ class Handler(BaseHTTPRequestHandler):
                     changed = any(existing.get(key) != value for key, value in (
                         ("host", host.strip()), ("protocol", config.get("protocol")),
                         ("connectionMode", "direct"), ("apiPort", config.get("apiPort", existing.get("apiPort"))),
-                        ("pairPort", config.get("pairPort", existing.get("pairPort"))), ("port", config.get("port", existing.get("port")))))
+                        ("pairPort", config.get("pairPort", existing.get("pairPort"))), ("port", config.get("port", existing.get("port"))),
+                        ("vidaaProfile", config.get("vidaaProfile", existing.get("vidaaProfile")))))
                     if changed:
                         existing.pop("tvCredentials", None)
+                        existing["manualControlEnabled"] = False
                     for key in ("homeAssistantId", "entityId", "remoteEntityId", "token"):
                         existing.pop(key, None)
                 elif config.get("connectionMode") == "homeassistant":
                     existing.pop("tvCredentials", None)
+                    existing["manualControlEnabled"] = False
+                if config.get("protocol") != "vidaa" or config.get("connectionMode") != "direct":
+                    existing.pop("vidaaProfile", None)
                 for key in {"password", "token", "apiKey"}:
                     if not config.get(key) and existing.get(key):
                         config[key] = existing[key]
@@ -604,8 +642,62 @@ class Handler(BaseHTTPRequestHandler):
                     raise APIError(400, "The maximum of 100 configured integrations has been reached.")
                 stored = dict(config, id=secrets.token_urlsafe(10), type=kind, name=name.strip(), host=host.strip(), status="configured", createdAt=time.time())
                 self.app.vault.data["integrations"].append(stored)
+            if kind in tv_types and config.get("connectionMode") == "direct":
+                stored.setdefault("manualControlEnabled", False)
             self.app.vault.event("Integration configured", stored["name"], "integration")
         self.send_json(200, {"integration": redact(stored)})
+
+    def manual_tv_command(self, path, body):
+        """Authenticated remote buttons use a saved, per-TV manual permission.
+
+        Assistant actions still use the separate proposal/approval pipeline.
+        A pairing, login, CSRF token, grant and command allowlist are all needed.
+        """
+        from . import direct_tv
+        if self.command != "POST":
+            raise APIError(405, "Use POST for a manual TV command.")
+        expected = {"command","text"} if body.get("command") == "text" else {"command"}
+        if set(body) != expected or not isinstance(body.get("command"), str):
+            raise APIError(400, "Send exactly one supported TV command.")
+        if body.get("command") == "text":
+            try:
+                direct_tv.validate_text(body.get("text"))
+            except direct_tv.TVError as exc:
+                raise APIError(400,str(exc)) from None
+        identity = path.split("/")[3]
+        config = self.app.integration(identity)
+        if not direct_tv.is_direct(config) or config.get("manualControlEnabled") is not True or not config.get("tvCredentials"):
+            raise APIError(403, "Pair this direct TV and enable immediate manual remote control in its connection settings first.", "manual_control_disabled")
+        protocol = direct_tv.protocol_for(config)
+        command = body["command"]
+        if command not in direct_tv.SUPPORTED_COMMANDS[protocol]:
+            raise APIError(400, "This command is not supported by the TV platform.")
+        if not self.app.tv_manual_limiter.permit(self.client_address[0]) or not self.app.tv_manual_slots.acquire(blocking=False):
+            raise APIError(429, "TV remote is busy. Try again in a moment.", "rate_limited")
+        with self.app.tv_manual_lock_guard:
+            # Remove obsolete locks without disturbing an in-flight request.
+            if len(self.app.tv_manual_locks) >= 100:
+                self.app.tv_manual_locks = {key:lock for key,lock in self.app.tv_manual_locks.items() if lock.locked()}
+            lock = self.app.tv_manual_locks.setdefault(identity, threading.Lock())
+            acquired = lock.acquire(blocking=False)
+        try:
+            if not acquired:
+                raise APIError(429, "This TV is still processing another remote button.", "rate_limited")
+            # Refresh after acquiring the target lock so a prior permission
+            # revocation or endpoint edit cannot be replayed from an old copy.
+            config = self.app.integration(identity)
+            if not direct_tv.is_direct(config) or config.get("manualControlEnabled") is not True or not config.get("tvCredentials"):
+                raise APIError(403, "Immediate manual control is disabled or this TV needs pairing again.", "manual_control_disabled")
+            if command not in direct_tv.SUPPORTED_COMMANDS[direct_tv.protocol_for(config)]:
+                raise APIError(400, "This command is not supported by the saved TV platform.")
+            result = direct_tv.execute_tv_command(config, body, approved=True)
+            result = {**result, "message":f"Sent {'text input' if command=='text' else command.replace('_',' ')} to {config['name']}."}
+            self.app.vault.event("Manual TV command", f"{config['name']}: {command}", "device")
+            self.send_json(200, redact(result))
+        finally:
+            if acquired:
+                lock.release()
+            self.app.tv_manual_slots.release()
 
     def pair_tv(self, path, body):
         from . import direct_tv
@@ -634,7 +726,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise APIError(502, "The TV did not confirm pairing. Retry the connection.")
                 with self.app.vault.lock:
                     stored = next((i for i in self.app.vault.data["integrations"] if i["id"] == identity), None)
-                    if not stored or any(stored.get(k) != config.get(k) for k in ("type", "host", "protocol", "connectionMode", "allowInsecureLocalControl", "port", "apiPort", "pairPort", "applePairProtocol")):
+                    if not stored or any(stored.get(k) != config.get(k) for k in ("type", "host", "protocol", "connectionMode", "allowInsecureLocalControl", "port", "apiPort", "pairPort", "applePairProtocol", "vidaaProfile")):
                         raise APIError(409, "The TV connection changed during pairing. Pair the saved address again.")
                     stored.update(tvCredentials=copy.deepcopy(credentials), status="paired", message=result.get("message", "TV pairing completed."), lastChecked=time.time())
                     self.app.vault.event("TV paired", config["name"], "integration")

@@ -6,6 +6,7 @@ inventory stays empty until the owner explicitly starts discovery.
 from __future__ import annotations
 
 import collections
+import concurrent.futures
 import contextlib
 import datetime as dt
 import ipaddress
@@ -211,17 +212,109 @@ def _parse_ssdp_response(payload, peer_address, subnet=None):
                       suggestedIntegration="hikvision" if vendor == "Hikvision" else None,
                       note="Camera advertisement detected; authorized credentials are required to view images.")
     else:
-        lower=hint.lower()
-        protocol=("roku" if "roku:ecp" in lower or "roku" in lower else
-                  "samsung" if "samsung" in lower else
-                  "webos" if "webos" in lower or "lgsmarttv" in lower else
-                  "androidtv" if "androidtvremote" in lower else None)
-        if protocol:
-            default_port={"samsung":8001,"androidtv":6466,"roku":8060,"webos":3000}[protocol]
-            result.update(type="tv",tvCandidate=True,suggestedIntegration=protocol,suggestedProtocol=protocol,
-                          suggestedHost=f"http://{peer_address}:{default_port}",host=f"http://{peer_address}:{default_port}",
-                          note="TV protocol advertisement detected. Explicit pairing and approved commands are required; model support varies.")
+        endpoint = _advertised_endpoint(headers.get("location", ""), peer_address)
+        if endpoint:
+            result["descriptionUrl"] = endpoint
+        _ssdp_tv_details(result, hint)
     return result
+
+
+def _ssdp_tv_details(result, hint):
+    """A manufacturer is a candidate, never evidence of Android TV support."""
+    lower = hint.lower()
+    protocol = ("androidtv" if "androidtvremote" in lower else
+                "roku" if "roku:ecp" in lower or "roku" in lower else
+                "vidaa" if re.search(r"\bvidaa(?:\b|_)", lower) else
+                "samsung" if "samsung" in lower else
+                "webos" if "webos" in lower or "lgsmarttv" in lower else None)
+    if protocol:
+        default_port = {"samsung":8001, "androidtv":6466, "roku":8060, "webos":3000, "vidaa":36669}[protocol]
+        result.update(type="tv", tvCandidate=True,
+            suggestedIntegration="hisense" if protocol == "vidaa" else protocol,
+            suggestedProtocol=protocol, suggestedHost=f"http://{result['ip']}:{default_port}",
+            host=f"http://{result['ip']}:{default_port}",
+            note="TV protocol advertisement detected. Explicit pairing and approved commands are required; model support varies.")
+        if protocol == "vidaa" and ("hisense" in lower or "brand=his" in lower):
+            result["vendor"] = "Hisense"
+    elif "hisense" in lower and not result.get("suggestedProtocol"):
+        result.update(type="tv", vendor="Hisense", tvCandidate=True,
+            suggestedIntegration="hisense", suggestedProtocol="",
+            suggestedHost=f"http://{result['ip']}", host=f"http://{result['ip']}",
+            note="Hisense TV detected. Choose its actual operating system before pairing; the brand alone does not identify its remote protocol.")
+
+
+def _parse_ssdp_description(payload):
+    """Read a small UPnP description without following embedded device URLs."""
+    if not isinstance(payload, bytes) or len(payload) > 32768 or b"\x00" in payload:
+        return {}
+    try:
+        text = payload.decode("utf-8-sig")
+        if "<!DOCTYPE" in text.upper() or "<!ENTITY" in text.upper():
+            return {}
+        root = ET.fromstring(text)
+    except (UnicodeError, ET.ParseError):
+        return {}
+    if root.tag not in {"root", "{urn:schemas-upnp-org:device-1-0}root"}:
+        return {}
+    stack, count = [(root, 0)], 0
+    while stack:
+        node, depth = stack.pop()
+        count += 1
+        if depth > 16 or count > 256:
+            return {}
+        stack.extend((child, depth + 1) for child in node)
+    device = next((child for child in root if child.tag.rsplit("}", 1)[-1] == "device"), None)
+    if device is None:
+        return {}
+    limits = {"friendlyName":100, "manufacturer":100, "modelName":100,
+              "modelNumber":100, "modelDescription":1024, "deviceType":120}
+    result = {}
+    for child in device:
+        key = child.tag.rsplit("}", 1)[-1]
+        if key in limits and key not in result and child.text:
+            result[key] = " ".join("".join(c for c in child.text if ord(c) >= 32 or c in "\r\n\t").split())[:limits[key]]
+    return result
+
+
+def _ssdp_metadata(candidate):
+    from .integrations import safe_request
+    endpoint = _advertised_endpoint(candidate.get("descriptionUrl", ""), candidate["ip"])
+    if not endpoint or candidate.get("type") == "camera":
+        return candidate
+    try:
+        metadata = _parse_ssdp_description(safe_request(endpoint, timeout=.75, max_bytes=32768))
+    except (ValueError, OSError):
+        return candidate
+    if not metadata:
+        return candidate
+    result = {**candidate, **{key:value for key,value in metadata.items() if key != "friendlyName"}}
+    if metadata.get("friendlyName"):
+        result.update(name=metadata["friendlyName"], nameSource="SSDP description")
+    if metadata.get("manufacturer"):
+        result["vendor"] = metadata["manufacturer"]
+    _ssdp_tv_details(result, " ".join([candidate.get("advertisement", ""), candidate.get("vendor") or "", *metadata.values()]))
+    return result
+
+
+def _enrich_ssdp_devices(devices):
+    # One URL per responder, at most eight requests, four workers and a fixed
+    # collection deadline. Slow metadata never prevents returning advertisements.
+    candidates = sorted((device for device in devices.values() if device.get("descriptionUrl")
+        and device.get("type") != "camera"), key=lambda device: device.get("type") != "tv")[:8]
+    if not candidates:
+        return
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="ssdp-metadata")
+    futures = {executor.submit(_ssdp_metadata, candidate):candidate["ip"] for candidate in candidates}
+    try:
+        for future in concurrent.futures.as_completed(futures, timeout=2):
+            try:
+                devices[futures[future]] = _merge_device(devices[futures[future]], future.result())
+            except (ValueError, OSError):
+                continue
+    except concurrent.futures.TimeoutError:
+        pass
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _merge_device(old, new):
@@ -229,10 +322,17 @@ def _merge_device(old, new):
     # camera identification while retaining neighbor MAC data and provenance.
     sources = list(dict.fromkeys([*old.get("sources", []), old.get("source"), new.get("source")]))
     sources = [source for source in sources if source][:4]
-    if old.get("onvif") or (old.get("type") == "camera" and new.get("type") != "camera") or (old.get("tvCandidate") and new.get("type") not in {"camera","tv"}):
+    old_mdns = old.get("source") == "TV mDNS advertisement" and bool(old.get("suggestedProtocol"))
+    if old.get("onvif") or (old.get("type") == "camera" and new.get("type") != "camera") or (old.get("tvCandidate") and new.get("type") not in {"camera","tv"}) or (old_mdns and new.get("type") != "camera"):
         result = {**new, **old, "online": new.get("online"), "lastSeen": new.get("lastSeen")}
     else:
         result = {**old, **new}
+        if old.get("suggestedProtocol") and not new.get("suggestedProtocol") and new.get("type") != "camera":
+            for key in ("suggestedProtocol", "suggestedIntegration", "suggestedHost", "host", "note"):
+                if key in old:
+                    result[key] = old[key]
+        if old.get("nameSource") == "SSDP description" and not new.get("nameSource") and new.get("source") != "TV mDNS advertisement":
+            result["name"], result["nameSource"] = old["name"], old["nameSource"]
     if new.get("name") == new.get("ip") and old.get("name"):
         result["name"] = old["name"]
     result["sources"] = sources
@@ -240,7 +340,7 @@ def _merge_device(old, new):
 
 
 def _discover_advertisements(local_address, subnet):
-    """Send read-only SSDP and ONVIF probes concurrently within a fixed budget."""
+    """Read local advertisements and bounded same-responder UPnP metadata."""
     devices = {}
     ids = {f"uuid:{uuid.uuid4()}" for _ in range(2)}
     probe_types = ("dn:NetworkVideoTransmitter", "tds:Device")
@@ -284,6 +384,7 @@ def _discover_advertisements(local_address, subnet):
                     if len(devices) >= 512 and candidate["ip"] not in devices:
                         continue
                     devices[candidate["ip"]] = _merge_device(devices.get(candidate["ip"], {}), candidate)
+    _enrich_ssdp_devices(devices)
     return list(devices.values())
 
 

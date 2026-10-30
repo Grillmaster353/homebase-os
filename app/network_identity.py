@@ -25,6 +25,8 @@ DEFAULT_SETTINGS = {"ispName": "", "routerName": "", "allowExternalLookup": Fals
 # Aliases identify names actually reported by the lookup or supplied by the
 # administrator. A router brand is never used to infer a retail ISP.
 ISP_ALIASES = (
+    ("flip", "Flip", ("flip tv", "flipconnect", "flip connect", "flip")),
+    ("vocus", "Vocus", ("vocus",)),
     ("cloudflare-inc", "Cloudflare", ("cloudflare",)),
     ("broadband-solutions", "Broadband Solutions", ("broadband solutions",)),
     ("aussie-broadband", "Aussie Broadband", ("aussie broadband",)),
@@ -41,6 +43,8 @@ ISP_ALIASES = (
     ("agl", "AGL", ("agl",)),
 )
 ROUTER_ALIASES = (
+    ("telstra", "Telstra", ("telstra",)),
+    ("optus", "Optus", ("optus",)),
     ("tplink", "TP-Link", ("tp link", "tplink")),
     ("asus", "ASUS", ("asus", "asustek")),
     ("netgear", "NETGEAR", ("netgear",)),

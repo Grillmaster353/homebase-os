@@ -31,8 +31,9 @@ class TVError(ValueError):
     pass
 
 
-PROTOCOLS = {"samsung", "androidtv", "appletv", "roku", "webos"}
+PROTOCOLS = {"samsung", "androidtv", "appletv", "roku", "webos", "vidaa"}
 TV_TYPES = PROTOCOLS | {"hisense"}
+DEFAULT_PORTS = {"samsung":8001,"androidtv":6466,"appletv":7000,"roku":8060,"webos":3000,"vidaa":36669}
 _LOOP = None
 _LOOP_LOCK = threading.Lock()
 _SESSIONS = {}
@@ -45,13 +46,37 @@ _ROKU_KEYS = {"power_on":"PowerOn", "power_off":"PowerOff", "volume_up":"VolumeU
 _APPLE_REMOTE = {"play":"play", "pause":"pause", "play_pause":"play_pause", "stop":"stop", "next":"next", "previous":"previous", "up":"up", "down":"down", "left":"left", "right":"right", "select":"select", "home":"home", "back":"menu", "menu":"menu"}
 _LG_URIS = {"power_off":"ssap://system/turnOff", "volume_up":"ssap://audio/volumeUp", "volume_down":"ssap://audio/volumeDown", "mute":"ssap://audio/setMute", "play":"ssap://media.controls/play", "pause":"ssap://media.controls/pause", "play_pause":"ssap://media.controls/play", "stop":"ssap://media.controls/stop", "next":"ssap://media.controls/fastForward", "previous":"ssap://media.controls/rewind"}
 _LG_BUTTONS = {"up":"UP", "down":"DOWN", "left":"LEFT", "right":"RIGHT", "select":"ENTER", "home":"HOME", "back":"BACK", "menu":"MENU"}
+_SAMSUNG_KEYS.update(channel_up="KEY_CHUP",channel_down="KEY_CHDOWN",input="KEY_SOURCE",info="KEY_INFO",guide="KEY_GUIDE",exit="KEY_EXIT",red="KEY_RED",green="KEY_GREEN",yellow="KEY_YELLOW",blue="KEY_BLUE")
+_ANDROID_KEYS.update(channel_up="CHANNEL_UP",channel_down="CHANNEL_DOWN",input="TV_INPUT",info="INFO",guide="GUIDE",delete="DEL",enter="ENTER")
+_ROKU_KEYS.update(channel_up="ChannelUp",channel_down="ChannelDown")
+_LG_URIS.update(channel_up="ssap://tv/channelUp",channel_down="ssap://tv/channelDown")
+for _digit in range(10):
+    _SAMSUNG_KEYS[f"digit_{_digit}"]=f"KEY_{_digit}"
+    _ANDROID_KEYS[f"digit_{_digit}"]=f"KEYCODE_{_digit}"
+    _ROKU_KEYS[f"digit_{_digit}"]=f"Lit_{_digit}"
+    _LG_BUTTONS[f"digit_{_digit}"]=str(_digit)
 SUPPORTED_COMMANDS = {
     "samsung": tuple(key for key in _SAMSUNG_KEYS if key not in {"next", "previous"}),
     "androidtv": tuple(_ANDROID_KEYS),
-    "appletv": tuple(key for key in _ANDROID_KEYS if key != "mute"),
+    "appletv": tuple(["power_on","power_off","volume_up","volume_down",*_APPLE_REMOTE]),
     "roku": tuple(key for key in _ROKU_KEYS if key not in {"play", "pause", "stop", "next", "previous"}),
     "webos": tuple([key for key in _LG_URIS if key not in {"play_pause", "next", "previous"}] + list(_LG_BUTTONS)),
+    "vidaa": ("power_toggle", "volume_up", "volume_down", "channel_up", "channel_down", "mute", "up", "down", "left", "right", "select", "home", "back", "menu", "play", "pause", "stop"),
 }
+for _protocol in SUPPORTED_COMMANDS:
+    SUPPORTED_COMMANDS[_protocol] += ("text",)
+from .vidaa import SUPPORTED_COMMANDS as _VIDAA_COMMANDS
+SUPPORTED_COMMANDS["vidaa"] = _VIDAA_COMMANDS
+
+
+def validate_text(text):
+    try:
+        valid = isinstance(text,str) and 1 <= len(text) <= 512 and len(text.encode('utf-8')) <= 2048 and not any(ord(c)<32 or ord(c)==127 for c in text)
+    except UnicodeError:
+        valid = False
+    if not valid:
+        raise TVError("Enter 1–512 characters without control characters.")
+    return text
 
 
 def _dependency(name):
@@ -64,7 +89,7 @@ def _dependency(name):
 def protocol_for(config):
     protocol = str(config.get("protocol") or config.get("type") or "").lower()
     if protocol == "hisense":
-        raise TVError("Choose the Hisense operating system: Android/Google TV or Roku. VIDAA models are not supported by these direct adapters.")
+        raise TVError("Choose the actual Hisense operating system: VIDAA, Android/Google TV, or Roku. The brand alone does not identify its remote protocol.")
     if protocol not in PROTOCOLS:
         raise TVError("Choose a supported direct TV protocol.")
     return protocol
@@ -113,7 +138,26 @@ def _binding(config, address, protocol):
     # A session cannot be replayed onto a different saved integration or address.
     value = {k: config.get(k) for k in ("id", "host", "port", "protocol", "type", "apiPort", "pairPort", "applePairProtocol", "allowInsecureLocalControl")}
     value.update(address=address, resolvedProtocol=protocol)
+    # Keep private client identities out of logs and session metadata while
+    # binding a pairing session to the exact encrypted credential profile.
+    value["vidaaProfileDigest"] = hashlib.sha256(json.dumps(config.get("vidaaProfile"), sort_keys=True).encode()).hexdigest()
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def _vidaa_profile(config):
+    from . import vidaa
+    try:
+        return vidaa.validate_profile(config.get("vidaaProfile"))
+    except vidaa.VidaaError as exc:
+        raise TVError(str(exc)) from None
+
+
+async def _vidaa_call(operation, *args):
+    from . import vidaa
+    try:
+        return await asyncio.to_thread(operation, *args)
+    except vidaa.VidaaError as exc:
+        raise TVError(str(exc)) from None
 
 
 def _approval(approved):
@@ -152,6 +196,9 @@ def _run(coroutine, timeout=20):
 
 
 async def _close_session(session):
+    if session.get("vidaa"):
+        from . import vidaa
+        await asyncio.to_thread(vidaa.close, session["vidaa"])
     task = session.get("task")
     if task and not task.done():
         task.cancel()
@@ -303,6 +350,12 @@ async def _apple_config(address):
 
 async def _start(config, address, protocol):
     await _cleanup()
+    # Retrying one TV must close its previous handshake; otherwise competing
+    # sessions can replace the on-screen PIN behind the user's form.
+    for identity, previous in list(_SESSIONS.items()):
+        if previous.get("configId") == str(config.get("id")):
+            _SESSIONS.pop(identity, None)
+            await _close_session(previous)
     if len(_SESSIONS) >= MAX_SESSIONS:
         raise TVError("Too many pairing sessions are open. Cancel one or wait three minutes.")
     session = {"id":secrets.token_urlsafe(24), "configId":str(config.get("id")), "binding":_binding(config,address,protocol), "expiresAt":time.time()+PAIR_TTL, "protocol":protocol, "address":address}
@@ -317,7 +370,14 @@ async def _start(config, address, protocol):
             for path in (cert,key):
                 os.chmod(path,0o600)
             await asyncio.wait_for(remote.async_start_pairing(),10)
-            requires_code, message = True, "Enter the six-character pairing code shown on your Android/Google TV. The TV may wake while pairing."
+            requires_code, message = True, "The Android remote service accepted the pairing request. Enter its six-character code. For a Chromecast, switch the TV to the Chromecast's HDMI input; the code appears on that device's screen. Keep that screen open."
+        elif protocol == "vidaa":
+            from . import vidaa
+            profile = _vidaa_profile(config)
+            session["vidaa"] = await _vidaa_call(vidaa.start_pairing, address, _target(config,36669)[1], profile)
+            requires_code = True
+            message = ("VIDAA confirmed its PIN prompt. Enter the four-digit code displayed on the TV."
+                       if session["vidaa"].pin_shown else "VIDAA acknowledged the connection request but did not confirm a PIN display. If a four-digit code is visible, enter it here. If no code appears, check the TV endpoint and its remote-app permissions, then restart pairing. This TV has not been marked paired.")
         elif protocol == "appletv":
             pyatv = _dependency("pyatv")
             constants = _dependency("pyatv.const")
@@ -343,8 +403,10 @@ async def _start(config, address, protocol):
             ws = await _websocket(address,port)
             session.update(websocket=ws,task=asyncio.create_task(_lg_register(ws)))
             requires_code, message = False, "Accept the Homebase connection prompt on the LG webOS TV, then choose Finish pairing."
-        else:
+        elif protocol == "roku":
             requires_code, message = False, "Roku uses local ECP rather than a pairing code. Enable Control by mobile apps on the Roku, then choose Finish pairing to confirm its read-only device response."
+        else:
+            raise TVError("Unsupported TV pairing protocol.")
         _SESSIONS[session["id"]] = session
         asyncio.get_running_loop().call_later(PAIR_TTL+1,lambda:asyncio.create_task(_cleanup()))
         return {"pairingId":session["id"],"status":"awaiting_code" if requires_code else "awaiting_confirmation","protocol":protocol,"requiresCode":requires_code,"message":message,"expiresAt":session["expiresAt"]}
@@ -357,7 +419,7 @@ def start_pairing(config, *, approved=False):
     _approval(approved)
     protocol = protocol_for(config)
     _local_channel_permission(config,protocol)
-    address,_,_ = _target(config,{"samsung":8001,"androidtv":6466,"appletv":7000,"roku":8060,"webos":3000}[protocol])
+    address,_,_ = _target(config,DEFAULT_PORTS[protocol])
     return _run(_start(copy.deepcopy(config),address,protocol),20)
 
 
@@ -367,7 +429,7 @@ async def _finish(pairing_id, config, code):
     if not session:
         raise TVError("Pairing expired or was cancelled. Start pairing again.")
     protocol = protocol_for(config)
-    address,_,_ = _target(config,{"samsung":8001,"androidtv":6466,"appletv":7000,"roku":8060,"webos":3000}[protocol])
+    address,_,_ = _target(config,DEFAULT_PORTS[protocol])
     if session["binding"] != _binding(config,address,protocol):
         raise TVError("The integration changed or this pairing belongs to a different TV. Start pairing again.")
     if session.get("finishing"):
@@ -379,6 +441,9 @@ async def _finish(pairing_id, config, code):
                 raise TVError("Enter the six hexadecimal characters shown on the Android/Google TV.")
             await asyncio.wait_for(session["android"].async_finish_pairing(str(code)),10)
             credentials = {"certificate":session["cert"].read_text(),"clientKey":session["key"].read_text()}
+        elif protocol == "vidaa":
+            from . import vidaa
+            credentials = await _vidaa_call(vidaa.finish_pairing, session["vidaa"], str(code))
         elif protocol == "appletv":
             if not re.fullmatch(r"[0-9]{4}",str(code)):
                 raise TVError("Enter the four-digit PIN shown on Apple TV.")
@@ -395,11 +460,15 @@ async def _finish(pairing_id, config, code):
                 credentials = await asyncio.wait_for(asyncio.shield(session["task"]),8)
             except asyncio.TimeoutError as exc:
                 raise TVError("The TV permission prompt is still waiting. Accept it on the TV and choose Finish again.") from exc
-        else:
+        elif protocol == "roku":
             info = await asyncio.to_thread(test_tv,config)
             if info.get("status") != "available":
                 raise TVError("Roku device information could not be verified.")
             credentials = {"approvedLocalControl":True}
+        else:
+            raise TVError("Unsupported TV pairing protocol.")
+        if _SESSIONS.get(pairing_id) is not session:
+            raise TVError("This pairing was cancelled or replaced. Start pairing again.")
         _SESSIONS.pop(pairing_id,None)
         await _close_session(session)
         return {"status":"paired","protocol":protocol,"message":"TV pairing/authorization completed. Device commands still require individual approval.","credentials":credentials}
@@ -416,7 +485,7 @@ def test_tv(config):
     """Read-only: HTTP device metadata, advertised Apple services, or TCP port."""
     from .integrations import safe_request
     protocol = protocol_for(config)
-    address,port,scheme = _target(config,{"samsung":8001,"androidtv":6466,"appletv":7000,"roku":8060,"webos":3000}[protocol])
+    address,port,scheme = _target(config,DEFAULT_PORTS[protocol])
     if protocol in {"samsung", "webos", "roku"} and scheme == "https":
         raise TVError("This vendor adapter cannot test an HTTPS-only endpoint without its supported TLS identity. It will not downgrade the saved address to HTTP.")
     if protocol == "samsung":
@@ -435,6 +504,14 @@ def test_tv(config):
     elif protocol == "appletv":
         found = _run(_apple_config(address),6)
         name = str(found.name)[:100]
+    elif protocol == "vidaa" and config.get("tvCredentials"):
+        from . import vidaa
+        try:
+            verified = vidaa.verify_connection(address,port,_vidaa_profile(config),config["tvCredentials"])
+        except vidaa.VidaaError as exc:
+            raise TVError(str(exc)) from None
+        return {"status":"available","protocol":protocol,"name":config.get("name") or "Hisense VIDAA TV","paired":True,
+                "authenticated":verified["authenticated"],"supportedCommands":list(SUPPORTED_COMMANDS[protocol]),"message":verified["message"]}
     else:
         try:
             with socket.create_connection((address,port),timeout=3):
@@ -442,10 +519,12 @@ def test_tv(config):
         except OSError as exc:
             raise TVError("The TV's local remote service is not reachable. Check its protocol, address and TV settings.") from exc
         name = config.get("name") or protocol
-    return {"status":"available","protocol":protocol,"name":name,"paired":bool(config.get("tvCredentials")),"supportedCommands":list(SUPPORTED_COMMANDS[protocol]),"message":"Local TV service responded. This read-only check did not register a remote or send a control command."}
+    message = ("The VIDAA TCP service is reachable. This read-only check did not authenticate TLS/MQTT, request a PIN, or verify pairing. An authorized VIDAA client profile is required for pairing."
+               if protocol == "vidaa" else "Local TV service responded. This read-only check did not register a remote or send a control command.")
+    return {"status":"available","protocol":protocol,"name":name,"paired":bool(config.get("tvCredentials")),"supportedCommands":list(SUPPORTED_COMMANDS[protocol]),"message":message}
 
 
-async def _apple_command(config,address,command):
+async def _apple_command(config,address,command,payload=None):
     pyatv = _dependency("pyatv")
     constants = _dependency("pyatv.const")
     found = await _apple_config(address)
@@ -461,7 +540,9 @@ async def _apple_command(config,address,command):
             service.enabled = False
     remote = await pyatv.connect(found,asyncio.get_running_loop())
     try:
-        if command in ("power_on","power_off"):
+        if command == "text":
+            await remote.keyboard.text_append((payload or {})["text"])
+        elif command in ("power_on","power_off"):
             await (remote.power.turn_on() if command == "power_on" else remote.power.turn_off())
         elif command in ("volume_up","volume_down"):
             await getattr(remote.audio,command)()
@@ -492,16 +573,23 @@ async def _command(config,address,port,protocol,command,payload):
     if protocol == "androidtv":
         android=_dependency("androidtvremote2")
         temporary,cert,key=_private_temp_credentials(credentials)
-        remote=android.AndroidTVRemote("Homebase",str(cert),str(key),address,api_port=_target(config,6466)[1],pair_port=_port(config,"pairPort",6467),enable_ime=False,enable_voice=False)
+        remote=android.AndroidTVRemote("Homebase",str(cert),str(key),address,api_port=_target(config,6466)[1],pair_port=_port(config,"pairPort",6467),enable_ime=command=="text",enable_voice=False)
         try:
             await asyncio.wait_for(remote.async_connect(),8)
-            remote.send_key_command(_ANDROID_KEYS[command])
+            if command == "text":
+                await asyncio.sleep(.15)
+                remote.send_text(payload["text"])
+            else:
+                remote.send_key_command(_ANDROID_KEYS[command])
             await asyncio.sleep(0.15)
         finally:
             remote.disconnect()
             temporary.cleanup()
+    elif protocol == "vidaa":
+        from . import vidaa
+        await _vidaa_call(vidaa.command,address,port,_vidaa_profile(config),credentials,command, payload.get("text"))
     elif protocol == "appletv":
-        await _apple_command(config,address,command)
+        await _apple_command(config,address,command,payload)
     elif protocol == "samsung":
         token=credentials.get("token")
         if not token:
@@ -509,7 +597,11 @@ async def _command(config,address,port,protocol,command,payload):
         websocket=await _websocket(address,port,_samsung_path(token))
         try:
             await asyncio.wait_for(_samsung_ready(websocket,token),6)
-            await websocket.send(json.dumps({"method":"ms.remote.control","params":{"Cmd":"Click","DataOfCmd":_SAMSUNG_KEYS[command],"Option":"false","TypeOfRemote":"SendRemoteKey"}}))
+            if command == "text":
+                await websocket.send(json.dumps({"method":"ms.channel.emit","params":{"event":"custom.remote.textReceived","to":"broadcast"}}))
+                await websocket.send(json.dumps({"method":"ms.remote.control","params":{"Cmd":base64.b64encode(payload["text"].encode()).decode(),"DataOfCmd":"base64","TypeOfRemote":"SendInputString"}}))
+            else:
+                await websocket.send(json.dumps({"method":"ms.remote.control","params":{"Cmd":"Click","DataOfCmd":_SAMSUNG_KEYS[command],"Option":"false","TypeOfRemote":"SendRemoteKey"}}))
             await asyncio.sleep(0.15)
         finally:
             await websocket.close()
@@ -517,7 +609,9 @@ async def _command(config,address,port,protocol,command,payload):
         websocket=await _websocket(address,port)
         try:
             await asyncio.wait_for(_lg_register(websocket,credentials.get("clientKey","")),6)
-            if command in _LG_BUTTONS:
+            if command == "text":
+                await _lg_request(websocket,"ssap://com.webos.service.ime/insertText",{"text":payload["text"],"replace":False})
+            elif command in _LG_BUTTONS:
                 info=await _lg_request(websocket,"ssap://com.webos.service.networkinput/getPointerInputSocket")
                 path=str(info.get("socketPath") or "")
                 parsed=urlsplit(path)
@@ -534,11 +628,15 @@ async def _command(config,address,port,protocol,command,payload):
                 await _lg_request(websocket,_LG_URIS[command],{"mute":bool(payload.get("muted",True))} if command=="mute" else None)
         finally:
             await websocket.close()
-    else:
+    elif protocol == "roku":
         from .integrations import safe_request
         if credentials.get("approvedLocalControl") is not True:
             raise TVError("Authorize Roku local control first.")
-        await asyncio.to_thread(safe_request,_http_origin(address,port)+"/keypress/"+_ROKU_KEYS[command],method="POST",data=b"",timeout=4,max_bytes=65536)
+        from urllib.parse import quote
+        key="Lit_"+quote(payload["text"],safe="") if command=="text" else _ROKU_KEYS[command]
+        await asyncio.to_thread(safe_request,_http_origin(address,port)+"/keypress/"+key,method="POST",data=b"",timeout=4,max_bytes=65536)
+    else:
+        raise TVError("Unsupported TV control protocol.")
     return {"message":f"Approved {command} command sent using direct {protocol} control.","protocol":protocol}
 
 
@@ -549,7 +647,9 @@ def execute_tv_command(config,payload,*,approved=False):
     command=str(payload.get("command") or "")
     if command not in SUPPORTED_COMMANDS[protocol]:
         raise TVError("This TV command is outside the supported remote-control allowlist.")
-    address,port,_=_target(config,{"samsung":8001,"androidtv":6466,"appletv":7000,"roku":8060,"webos":3000}[protocol])
+    if command == "text":
+        validate_text(payload.get("text"))
+    address,port,_=_target(config,DEFAULT_PORTS[protocol])
     return _run(_command(copy.deepcopy(config),address,port,protocol,command,payload),20)
 
 
