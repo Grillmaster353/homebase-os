@@ -12,6 +12,7 @@ import concurrent.futures
 import contextlib
 import copy
 import hashlib
+import hmac
 import importlib
 import ipaddress
 import json
@@ -20,6 +21,7 @@ from pathlib import Path
 import re
 import secrets
 import socket
+import ssl
 import tempfile
 import threading
 import time
@@ -95,6 +97,10 @@ def protocol_for(config):
     return protocol
 
 
+def _default_port(config,protocol):
+    return 3001 if protocol=="webos" and str(config.get("host","")).lower().startswith("https:") else DEFAULT_PORTS[protocol]
+
+
 def is_direct(config):
     return config.get("connectionMode") == "direct" and config.get("type") in TV_TYPES
 
@@ -136,7 +142,7 @@ def _http_origin(address, port):
 
 def _binding(config, address, protocol):
     # A session cannot be replayed onto a different saved integration or address.
-    value = {k: config.get(k) for k in ("id", "host", "port", "protocol", "type", "apiPort", "pairPort", "applePairProtocol", "allowInsecureLocalControl")}
+    value = {k: config.get(k) for k in ("id", "host", "port", "protocol", "type", "apiPort", "pairPort", "applePairProtocol", "allowInsecureLocalControl", "serverFingerprint")}
     value.update(address=address, resolvedProtocol=protocol)
     # Keep private client identities out of logs and session metadata while
     # binding a pairing session to the exact encrypted credential profile.
@@ -166,6 +172,10 @@ def _approval(approved):
 
 
 def _local_channel_permission(config, protocol):
+    if protocol == "webos" and str(config.get("host") or "").lower().startswith("https:"):
+        if not re.fullmatch(r"[0-9a-fA-F]{64}",str(config.get("serverFingerprint") or "")):
+            raise TVError("Secure LG pairing needs the TV's approved SHA-256 certificate fingerprint. Read and trust this TV's certificate in connection settings first.")
+        return
     if protocol in {"samsung", "webos", "roku"} and config.get("allowInsecureLocalControl") is not True:
         raise TVError("This vendor's local control channel is unencrypted. Explicitly allow local control for this TV on your trusted LAN before pairing. Dashboard credentials are never sent to the TV.")
     if protocol in {"samsung", "webos", "roku"} and str(config.get("host") or "").lower().startswith("https:"):
@@ -271,6 +281,67 @@ async def _websocket(address, port, path="/"):
     return await connect(f"ws://{'['+address+']' if ':' in address else address}:{port}{path}", open_timeout=6, close_timeout=1, ping_interval=None, max_size=65536, proxy=None)
 
 
+def _peer_certificate(address, port):
+    # Enrollment/probe only: no HTTP, registration, client key or other app
+    # data is sent over this socket. The approved fingerprint is checked before
+    # creating the separate CERT_REQUIRED WebSocket connection below.
+    context=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname=False
+    context.verify_mode=ssl.CERT_NONE
+    context.minimum_version=ssl.TLSVersion.TLSv1_2
+    try:
+        with socket.create_connection((address,port),timeout=3) as raw:
+            with context.wrap_socket(raw,server_hostname=address) as secured:
+                certificate=secured.getpeercert(binary_form=True)
+                if not certificate or len(certificate)>65536:
+                    raise TVError("LG did not return a valid server certificate.")
+                return certificate
+    except OSError as exc:
+        raise TVError("The LG secure service could not be reached on the saved address/port. No registration or commands were sent.") from exc
+
+
+def inspect_webos_certificate(config):
+    if protocol_for(config)!="webos":
+        raise TVError("Certificate enrollment is available for LG webOS connections only.")
+    address,port,scheme=_target(config,3001)
+    if scheme!="https":
+        raise TVError("Use https://TV-address:3001 for a secure LG connection.")
+    certificate=_peer_certificate(address,port)
+    return {"address":address,"port":port,"fingerprint":hashlib.sha256(certificate).hexdigest(),"message":"Public TV certificate read. Review and trust this specific local TV before pairing; no registration or commands were sent."}
+
+
+async def _webos_websocket(config,address,port,path="/"):
+    if not str(config.get("host") or "").lower().startswith("https:"):
+        try:
+            return await _websocket(address,port,path)
+        except Exception as exc:
+            if isinstance(exc,TVError):
+                raise
+            raise TVError("LG closed the plain WebSocket connection. Newer TVs require https://TV-address:3001 and a trusted TV certificate in connection settings.") from None
+    _local_channel_permission(config,"webos")
+    expected=config["serverFingerprint"].lower()
+    certificate=await asyncio.to_thread(_peer_certificate,address,port)
+    if not hmac.compare_digest(hashlib.sha256(certificate).hexdigest(),expected):
+        raise TVError("The LG certificate changed or does not match the trusted fingerprint. Pairing was stopped before any client key was sent.")
+    context=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.minimum_version=ssl.TLSVersion.TLSv1_2
+    context.check_hostname=False  # The approved exact leaf pin supplies identity.
+    context.verify_mode=ssl.CERT_REQUIRED
+    context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+    context.load_verify_locations(cadata=ssl.DER_cert_to_PEM_cert(certificate))
+    module=_dependency("websockets")
+    connect=_redirect_safe_connect_class(_dependency("websockets.asyncio.client").connect,getattr(module,"__version__",None))
+    try:
+        websocket=await connect(f"wss://{'['+address+']' if ':' in address else address}:{port}{path}",ssl=context,open_timeout=6,close_timeout=1,ping_interval=None,max_size=65536,proxy=None)
+    except Exception:
+        raise TVError("The pinned LG TLS WebSocket connection failed. No unencrypted fallback or certificate bypass was attempted.") from None
+    peer=websocket.transport.get_extra_info("ssl_object")
+    if peer is None or not hmac.compare_digest(hashlib.sha256(peer.getpeercert(binary_form=True)).hexdigest(),expected):
+        await websocket.close()
+        raise TVError("LG's active TLS identity does not match the saved fingerprint.")
+    return websocket
+
+
 async def _receive_json(websocket, timeout=8):
     raw = await asyncio.wait_for(websocket.recv(), timeout)
     if not isinstance(raw, (str, bytes)) or len(raw) > 65536:
@@ -304,16 +375,24 @@ async def _samsung_ready(websocket, existing_token=""):
     raise TVError("Samsung pairing did not complete.")
 
 
-_LG_PERMISSIONS = ["CONTROL_AUDIO", "CONTROL_POWER", "CONTROL_INPUT_JOYSTICK", "CONTROL_INPUT_MEDIA_PLAYBACK", "READ_POWER_STATE"]
+_LG_PERMISSIONS = ["CONTROL_AUDIO", "CONTROL_POWER", "CONTROL_INPUT_JOYSTICK", "CONTROL_INPUT_MEDIA_PLAYBACK", "CONTROL_INPUT_TV", "CONTROL_INPUT_TEXT", "CONTROL_MOUSE_AND_KEYBOARD", "READ_POWER_STATE"]
 
 
-async def _lg_register(websocket, client_key=""):
+async def _lg_register(websocket, client_key="", modern=False):
+    if modern:
+        await websocket.send(json.dumps({"id":"homebase-hello","type":"hello","payload":{}}))
+        hello=await _receive_json(websocket,5)
+        if hello.get("type")!="hello":
+            raise TVError("LG did not complete its secure remote hello handshake.")
+        await websocket.send(json.dumps({"id":"homebase-sysinfo","type":"request","uri":"ssap://system/getSystemInfo","payload":{}}))
+        await _receive_json(websocket,5)
     payload = {"pairingType": "PROMPT", "manifest": {"manifestVersion":1, "appVersion":"1.0", "permissions": _LG_PERMISSIONS}}
     if client_key:
         payload["client-key"] = str(client_key)
     await websocket.send(json.dumps({"id":"homebase-register", "type":"register", "payload":payload}))
+    deadline=asyncio.get_running_loop().time()+PAIR_TTL
     for _ in range(30):
-        value = await _receive_json(websocket, 6)
+        value = await _receive_json(websocket,max(.1,deadline-asyncio.get_running_loop().time()))
         if value.get("type") == "registered":
             key = value.get("payload", {}).get("client-key") or client_key
             if not isinstance(key, str) or not 1 <= len(key) <= 4096:
@@ -399,9 +478,9 @@ async def _start(config, address, protocol):
             session.update(websocket=ws,task=asyncio.create_task(_samsung_ready(ws)))
             requires_code, message = False, "Accept the Homebase remote permission prompt on the Samsung TV, then choose Finish pairing."
         elif protocol == "webos":
-            _,port,_ = _target(config,3000)
-            ws = await _websocket(address,port)
-            session.update(websocket=ws,task=asyncio.create_task(_lg_register(ws)))
+            _,port,_ = _target(config,_default_port(config,"webos"))
+            ws = await _webos_websocket(config,address,port)
+            session.update(websocket=ws,task=asyncio.create_task(_lg_register(ws,modern=str(config.get("host","")).lower().startswith("https:"))))
             requires_code, message = False, "Accept the Homebase connection prompt on the LG webOS TV, then choose Finish pairing."
         elif protocol == "roku":
             requires_code, message = False, "Roku uses local ECP rather than a pairing code. Enable Control by mobile apps on the Roku, then choose Finish pairing to confirm its read-only device response."
@@ -419,7 +498,7 @@ def start_pairing(config, *, approved=False):
     _approval(approved)
     protocol = protocol_for(config)
     _local_channel_permission(config,protocol)
-    address,_,_ = _target(config,DEFAULT_PORTS[protocol])
+    address,_,_ = _target(config,_default_port(config,protocol))
     return _run(_start(copy.deepcopy(config),address,protocol),20)
 
 
@@ -429,7 +508,7 @@ async def _finish(pairing_id, config, code):
     if not session:
         raise TVError("Pairing expired or was cancelled. Start pairing again.")
     protocol = protocol_for(config)
-    address,_,_ = _target(config,DEFAULT_PORTS[protocol])
+    address,_,_ = _target(config,_default_port(config,protocol))
     if session["binding"] != _binding(config,address,protocol):
         raise TVError("The integration changed or this pairing belongs to a different TV. Start pairing again.")
     if session.get("finishing"):
@@ -485,9 +564,15 @@ def test_tv(config):
     """Read-only: HTTP device metadata, advertised Apple services, or TCP port."""
     from .integrations import safe_request
     protocol = protocol_for(config)
-    address,port,scheme = _target(config,DEFAULT_PORTS[protocol])
-    if protocol in {"samsung", "webos", "roku"} and scheme == "https":
+    address,port,scheme = _target(config,_default_port(config,protocol))
+    if protocol in {"samsung", "roku"} and scheme == "https":
         raise TVError("This vendor adapter cannot test an HTTPS-only endpoint without its supported TLS identity. It will not downgrade the saved address to HTTP.")
+    if protocol == "webos" and scheme=="https":
+        async def check_transport():
+            ws=await _webos_websocket(config,address,port)
+            await ws.close()
+        _run(check_transport(),12)
+        return {"status":"available","protocol":protocol,"name":config.get("name") or "LG webOS TV","paired":bool(config.get("tvCredentials")),"supportedCommands":list(SUPPORTED_COMMANDS[protocol]),"message":"LG's pinned TLS WebSocket service responded. This read-only check did not register a remote or send a command."}
     if protocol == "samsung":
         data = json.loads(safe_request(_http_origin(address,port)+"/api/v2/",timeout=4,max_bytes=65536))
         if not isinstance(data,dict) or not isinstance(data.get("device"),dict):
@@ -606,18 +691,19 @@ async def _command(config,address,port,protocol,command,payload):
         finally:
             await websocket.close()
     elif protocol == "webos":
-        websocket=await _websocket(address,port)
+        secure=str(config.get("host","")).lower().startswith("https:")
+        websocket=await _webos_websocket(config,address,port)
         try:
-            await asyncio.wait_for(_lg_register(websocket,credentials.get("clientKey","")),6)
+            await asyncio.wait_for(_lg_register(websocket,credentials.get("clientKey",""),modern=secure),10)
             if command == "text":
                 await _lg_request(websocket,"ssap://com.webos.service.ime/insertText",{"text":payload["text"],"replace":False})
             elif command in _LG_BUTTONS:
                 info=await _lg_request(websocket,"ssap://com.webos.service.networkinput/getPointerInputSocket")
                 path=str(info.get("socketPath") or "")
                 parsed=urlsplit(path)
-                if parsed.scheme != "ws" or parsed.hostname != address or parsed.port not in {port,3000,3001} or parsed.query or parsed.fragment:
+                if parsed.scheme != ("wss" if secure else "ws") or parsed.hostname != address or parsed.port != port or parsed.query or parsed.fragment:
                     raise TVError("LG returned an unexpected input-socket destination.")
-                pointer=await _websocket(address,parsed.port,parsed.path)
+                pointer=await _webos_websocket(config,address,parsed.port,parsed.path)
                 try:
                     await pointer.send("type:button\nname:"+_LG_BUTTONS[command]+"\n\n")
                 finally:
@@ -649,7 +735,7 @@ def execute_tv_command(config,payload,*,approved=False):
         raise TVError("This TV command is outside the supported remote-control allowlist.")
     if command == "text":
         validate_text(payload.get("text"))
-    address,port,_=_target(config,DEFAULT_PORTS[protocol])
+    address,port,_=_target(config,_default_port(config,protocol))
     return _run(_command(copy.deepcopy(config),address,port,protocol,command,payload),20)
 
 

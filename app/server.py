@@ -47,6 +47,7 @@ class Application:
         self.tv_manual_slots = threading.BoundedSemaphore(2)
         self.tv_manual_locks = {}
         self.tv_manual_lock_guard = threading.Lock()
+        self.tv_cert_limiter = RateLimiter(6, 60)
         self.chat_slots = threading.BoundedSemaphore(2)
         self.approved_reads: dict[str, dict] = {}
         self.monitor = monitor
@@ -491,6 +492,17 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, {"deleted": True})
         elif re.fullmatch(r"/api/tvs/[^/]+/pair/(start|finish|cancel)", path):
             self.pair_tv(path, body)
+        elif path == "/api/tvs/certificate":
+            from . import direct_tv
+            if self.command!="POST" or set(body)!={"host"} or not isinstance(body.get("host"),str) or not 1<=len(body["host"])<=2048:
+                raise APIError(400,"Send the LG TV's HTTPS host address only.")
+            if not self.app.tv_cert_limiter.permit(self.client_address[0]) or not self.app.pair_slots.acquire(blocking=False):
+                raise APIError(429,"Certificate checks are busy. Try again shortly.","rate_limited")
+            try:
+                result=direct_tv.inspect_webos_certificate({"type":"webos","protocol":"webos","host":body["host"]})
+                self.send_json(200,result)
+            finally:
+                self.app.pair_slots.release()
         elif re.fullmatch(r"/api/tvs/[^/]+/command", path):
             self.manual_tv_command(path, body)
         elif path == "/api/settings":
@@ -562,7 +574,7 @@ class Handler(BaseHTTPRequestHandler):
             # DNS names are resolved and checked again by the integration client.
             if not re.fullmatch(r"[A-Za-z0-9.-]{1,253}", parsed.hostname):
                 raise APIError(400, "Invalid local hostname.")
-        accepted = {"username", "password", "token", "port", "entityId", "remoteEntityId", "homeAssistantId", "channel", "snapshotChannel", "apiKey", "model", "protocol", "monitoringPath", "basePath", "connectionMode", "allowInsecureLocalControl", "apiPort", "pairPort"}
+        accepted = {"username", "password", "token", "port", "entityId", "remoteEntityId", "homeAssistantId", "channel", "snapshotChannel", "apiKey", "model", "protocol", "monitoringPath", "basePath", "connectionMode", "allowInsecureLocalControl", "apiPort", "pairPort", "serverFingerprint"}
         if "manualControlEnabled" in body and type(body["manualControlEnabled"]) is not bool:
             raise APIError(400, "Manual TV control permission must be a JSON boolean.")
         config = {key: value for key, value in body.items() if key in accepted and isinstance(value, (str, int, float, bool))}
@@ -581,6 +593,11 @@ class Handler(BaseHTTPRequestHandler):
                 if protocol not in {"samsung", "androidtv", "appletv", "roku", "webos", "vidaa"}:
                     raise APIError(400, "Choose the TV's actual platform: VIDAA, Android/Google TV, Roku, Samsung, Apple TV, or LG webOS.")
                 config["protocol"] = protocol
+                if protocol=="webos" and "serverFingerprint" in config:
+                    fingerprint=str(config["serverFingerprint"]).replace(":", "").strip().lower()
+                    if fingerprint and not re.fullmatch(r"[0-9a-f]{64}",fingerprint):
+                        raise APIError(400,"Use the LG certificate's 64-character SHA-256 fingerprint.")
+                    config["serverFingerprint"]=fingerprint
                 if protocol == "vidaa" and body.get("vidaaProfile"):
                     from . import vidaa
                     raw_profile = body["vidaaProfile"]
@@ -621,7 +638,8 @@ class Handler(BaseHTTPRequestHandler):
                         ("host", host.strip()), ("protocol", config.get("protocol")),
                         ("connectionMode", "direct"), ("apiPort", config.get("apiPort", existing.get("apiPort"))),
                         ("pairPort", config.get("pairPort", existing.get("pairPort"))), ("port", config.get("port", existing.get("port"))),
-                        ("vidaaProfile", config.get("vidaaProfile", existing.get("vidaaProfile")))))
+                        ("vidaaProfile", config.get("vidaaProfile", existing.get("vidaaProfile"))),
+                        ("serverFingerprint",config.get("serverFingerprint",existing.get("serverFingerprint")))))
                     if changed:
                         existing.pop("tvCredentials", None)
                         existing["manualControlEnabled"] = False
@@ -632,6 +650,8 @@ class Handler(BaseHTTPRequestHandler):
                     existing["manualControlEnabled"] = False
                 if config.get("protocol") != "vidaa" or config.get("connectionMode") != "direct":
                     existing.pop("vidaaProfile", None)
+                if config.get("protocol")!="webos" or config.get("connectionMode")!="direct":
+                    existing.pop("serverFingerprint",None)
                 for key in {"password", "token", "apiKey"}:
                     if not config.get(key) and existing.get(key):
                         config[key] = existing[key]
@@ -726,7 +746,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise APIError(502, "The TV did not confirm pairing. Retry the connection.")
                 with self.app.vault.lock:
                     stored = next((i for i in self.app.vault.data["integrations"] if i["id"] == identity), None)
-                    if not stored or any(stored.get(k) != config.get(k) for k in ("type", "host", "protocol", "connectionMode", "allowInsecureLocalControl", "port", "apiPort", "pairPort", "applePairProtocol", "vidaaProfile")):
+                    if not stored or any(stored.get(k) != config.get(k) for k in ("type", "host", "protocol", "connectionMode", "allowInsecureLocalControl", "port", "apiPort", "pairPort", "applePairProtocol", "vidaaProfile", "serverFingerprint")):
                         raise APIError(409, "The TV connection changed during pairing. Pair the saved address again.")
                     stored.update(tvCredentials=copy.deepcopy(credentials), status="paired", message=result.get("message", "TV pairing completed."), lastChecked=time.time())
                     self.app.vault.event("TV paired", config["name"], "integration")
