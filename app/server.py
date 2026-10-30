@@ -39,6 +39,7 @@ class Application:
         self.vault = Vault(data_dir)
         self.sessions = Sessions()
         self.auth_limiter = RateLimiter(5, 300)
+        self.mfa_disable_limiter = RateLimiter(5, 300)
         self.chat_limiter = RateLimiter(25, 60)
         self.identity_limiter = RateLimiter(5, 60)
         self.pair_limiter = RateLimiter(12, 60)
@@ -345,7 +346,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def status(self):
         session = self.session()
-        result = {"setupRequired": not bool(self.app.vault.data.get("account")), "authenticated": bool(session), "secure": self.app.secure, "version": __version__}
+        result = {"setupRequired": not bool(self.app.vault.data.get("account")), "authenticated": bool(session), "secure": self.app.secure, "version": __version__, "setupLocalAllowed": ipaddress.ip_address(self.client_address[0]).is_loopback}
         if session:
             result.update(user=session["user"], csrfToken=session["csrf"])
         return result
@@ -542,6 +543,26 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(200, result)
             finally:
                 self.app.chat_slots.release()
+        elif path == "/api/auth/mfa/disable":
+            if self.command != "POST":
+                raise APIError(405, "Use POST to change two-factor authentication.")
+            session = self.require_auth()
+            if not self.app.mfa_disable_limiter.permit(session["user"]):
+                raise APIError(429, "Too many verification attempts. Wait five minutes before retrying.", "rate_limited")
+            with self.app.vault.lock:
+                account = self.app.vault.data["account"]
+                if not account.get("mfaSecret"):
+                    raise APIError(409, "Two-factor authentication is not enabled.")
+                password_ok = verify_password(body.get("password", ""), account["password"])
+                counter = verify_totp(account["mfaSecret"], str(body.get("code", "")), account.get("mfaLastCounter", -1))
+                if not password_ok or counter is None:
+                    raise APIError(401, "Enter your current password and a fresh, unused authenticator code.", "verification_failed")
+                for key in ("mfaSecret", "mfaLastCounter", "mfaPending", "mfaPendingUntil"):
+                    account.pop(key, None)
+                self.app.vault.event("Two-factor authentication disabled", "Password and authenticator verified. All sessions signed out.", "security")
+                self.app.sessions.revoke_all()
+            self.app.mfa_disable_limiter.clear(session["user"])
+            self.send_json(200, {"mfaEnabled": False, "authenticated": False}, self.auth_cookie("", clear=True))
         elif path == "/api/auth/mfa/setup":
             with self.app.vault.lock:
                 account = self.app.vault.data["account"]

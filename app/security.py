@@ -205,6 +205,10 @@ class Sessions:
             record["seen"] = now
             return record.copy()
 
+    def revoke_all(self) -> None:
+        with self.lock:
+            self.records.clear()
+
     def delete(self, token: str) -> None:
         with self.lock:
             self.records.pop(hashlib.sha256(token.encode()).hexdigest(), None)
