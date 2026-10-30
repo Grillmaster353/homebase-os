@@ -29,7 +29,7 @@ SCRIPTS = ("scripts/setup-pi.sh", "scripts/package.py", "scripts/export-github.p
 WORKFLOWS = (".github/workflows/ci.yml", ".github/workflows/pages.yml")
 TREE_TYPES = {
     "app": {".py"},
-    "web": {".html", ".css", ".js", ".mjs", ".svg", ".woff", ".woff2", ".md"},
+    "web": {".html", ".css", ".js", ".mjs", ".svg", ".webp", ".png", ".woff", ".woff2", ".md"},
     "tests": {".py", ".mjs"},
     "docs": {".html", ".css", ".js", ".svg", ".md"},
 }
@@ -93,6 +93,8 @@ def selected_files(root: Path) -> dict[str, Path]:
             if not candidate.is_file() or any(part in BLOCKED_PARTS or part.startswith(".") or "screenshot" in part.lower() for part in relative.parts):
                 continue
             if candidate.suffix.lower() not in suffixes:
+                continue
+            if candidate.suffix.lower() in {".png", ".webp"} and relative.parts[:3] != ("web", "assets", "brands"):
                 continue
             selected[str(relative)] = safe_source(root, str(relative))
     nojekyll = root / "docs/.nojekyll"
