@@ -119,10 +119,10 @@ class DirectTVTests(unittest.TestCase):
             with self.subTest(protocol=protocol):
                 with self.assertRaisesRegex(direct_tv.TVError,'unencrypted'):
                     direct_tv.start_pairing(self.config(protocol),approved=True)
-                with self.assertRaisesRegex(direct_tv.TVError,'downgrade'):
+                with self.assertRaisesRegex(direct_tv.TVError,'fingerprint' if protocol=='webos' else 'downgrade'):
                     direct_tv.start_pairing(self.config(protocol,host='https://192.168.1.20',allowInsecureLocalControl=True),approved=True)
                 with patch('app.integrations.safe_request') as http, patch('app.direct_tv.socket.create_connection') as tcp:
-                    with self.assertRaisesRegex(direct_tv.TVError,'downgrade'):
+                    with self.assertRaisesRegex(direct_tv.TVError,'fingerprint' if protocol=='webos' else 'downgrade'):
                         direct_tv.test_tv(self.config(protocol,host='https://192.168.1.20'))
                     http.assert_not_called()
                     tcp.assert_not_called()

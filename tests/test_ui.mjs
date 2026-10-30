@@ -504,6 +504,29 @@ test('documentation preview and invalid repository configuration make no externa
 });
 
 
+test('secure LG pairing uses a visible saved fingerprint without cleartext consent', () => {
+  const {ui,elements}=harness();
+  const config={id:'lg-fixture',type:'webos',protocol:'webos',connectionMode:'direct',name:'LG',host:'https://192.168.1.20:3001',serverFingerprint:'a'.repeat(64)};
+  ui.connectionModal('webos',config);
+  let html=elements.get('#modal-root').innerHTML;
+  assert.match(html,/Read TV certificate/);assert.match(html,/name="serverFingerprint"/);assert.match(html,/https:\/\/TV-address:3001/);
+  ui.pairingModal(config);html=elements.get('#modal-root').innerHTML;
+  assert.doesNotMatch(html,/pair-insecure-consent/);
+  ui.pairingModal({...config,host:'http://192.168.1.20:3000'});
+  assert.match(elements.get('#modal-root').innerHTML,/pair-insecure-consent/);
+});
+
+test('reading an LG certificate populates public trust metadata without saving or pairing', async () => {
+  const {ui,elements,requests}=harness(()=>({address:'192.168.1.20',port:3001,fingerprint:'b'.repeat(64)}));
+  elements.set('#integration-form [name="host"]',{value:'https://192.168.1.20:3001'});
+  elements.set('#integration-form [name="serverFingerprint"]',{value:''});
+  elements.set('#lg-certificate-status',{textContent:''});
+  await ui.handleAction('read-lg-certificate',{disabled:false});
+  assert.equal(requests.length,1);assert.equal(requests[0].url,'/api/tvs/certificate');
+  assert.deepEqual(requests[0].json,{host:'https://192.168.1.20:3001'});
+  assert.equal(elements.get('#integration-form [name="serverFingerprint"]').value,'b'.repeat(64));
+});
+
 test('Smart TVs has a dedicated navigation destination and Devices contains no remotes', () => {
   const {ui}=harness();ui.state.overview.integrations=[{id:'paired',type:'hisense',protocol:'vidaa',connectionMode:'direct',name:'Living TV',hasTvCredentials:true,manualControlEnabled:true}];
   assert.match(ui.shell(''),/data-nav="tvs"[^>]*[\s\S]*Smart TVs/);
