@@ -15,7 +15,7 @@ system, available remote service, or supported commands.
 | Hisense VIDAA | Compatible local MQTT-over-TLS service, normally port 36669. Supply an authorised client credential profile and verified TLS trust, then request and enter the four-digit VIDAA PIN. | Advanced, firmware-dependent support. No shared vendor private keys or broker passwords are bundled. A PIN alone cannot authenticate the initial connection. The adapter does not enable remote services or change TV security settings. The Power button is a toggle, not separate power-on/off commands. Wake from standby depends on the TV keeping its network service available; channel buttons depend on the current TV/tuner context. |
 | Apple TV | `pyatv` discovers supported services and pairs with a four-digit PIN. Companion is preferred when it supports pairing; AirPlay is a fallback. | Availability varies by tvOS version and protocol. Some media/volume commands need an additional supported service or a device configuration outside Homebase. Legacy PIN-entry-on-TV flows are not handled by this form. Mute is not universally supported. |
 | Roku / Roku TV | Local ECP on port 8060. Enable **Control by mobile apps** on the Roku yourself, then explicitly authorize that local connection in Homebase. No PIN is invented. | Power and volume depend on the Roku model and TV/HDMI settings. Play/pause is a toggle. Developer-only ECP APIs, arbitrary app launching, and unsupported commands are not exposed. |
-| LG webOS | Local SSAP/WebSocket, usually port 3000. Accept Homebase's local registration prompt on the TV; its returned client key is encrypted in the vault. | Firmware and remote-permission support vary. The adapter requires explicit cleartext-LAN permission; it does not bypass an HTTPS-only TV certificate. Deep-sleep power-on is not implemented. |
+| LG webOS | Secure SSAP/WSS on port 3001 with a trusted per-TV certificate fingerprint, or explicitly permitted legacy WS on port 3000. Accept the on-screen registration prompt; the client key is encrypted in the vault. | Model and permission support vary. Secure pairing performs hello and pre-registration system information first. Changed fingerprints require fresh trust and pairing. Deep-sleep power-on is not implemented. |
 
 These are real protocol adapters, rather than universal compatibility claims.
 They have controlled protocol/approval tests, but each physical TV and firmware
@@ -124,7 +124,7 @@ checked before MQTT credentials are sent; there is no silent unverified-TLS
 fallback. Client keys are stored in the encrypted vault, with private temporary
 files used only while loading the TLS identity.
 
-Samsung's implemented local WS API, LG's implemented local WS API, and Roku ECP
+Samsung's implemented local WS API, LG's legacy local WS API, and Roku ECP
 are **unencrypted local channels**. They require an explicit per-device opt-in
 before pairing or commands. Use them only on your trusted, isolated home LAN.
 Homebase never sends your dashboard password to a television. An entered HTTPS
@@ -181,3 +181,11 @@ On a laptop, Arrow keys navigate, Enter selects, and Escape goes back while the 
 To type, focus a supported text/search field on the television first. Use the digital keyboard or your device’s own keyboard, then press **Send to TV**. Direct text requires a paired TV and its one-time immediate manual-control permission. Text is bounded to 512 characters, stays in memory until sent, is cleared after successful sending or sign-out, and is excluded from activity logs. Android, Apple TV, Samsung, Roku, LG webOS and VIDAA use their separate local input protocols; app and firmware support varies. Sending reports transport delivery, not proof of the resulting on-screen text. Home Assistant connections retain their existing supported media/navigation controls.
 
 VIDAA text uses the platform service’s native `txtinputdata` and browser `bwsinputdata` insertion routes, documented by the [maintainer implementation](https://github.com/stevene1919/hisense_vidaa/blob/main/custom_components/hisense_vidaa/tv/actions.py). It does not install a keyboard, enable ADB, or alter TV security settings.
+
+## Secure LG pairing
+
+Modern LG firmware may accept TCP on port 3000 but close its plain WebSocket handshake. Use `https://TV-address:3001` in the LG connection form instead. Select **Read TV certificate**, review the address and SHA-256 fingerprint, then save to trust that exact certificate for the saved TV. Start pairing and accept the remote-app permission on the television. HomeBase waits up to the pairing session deadline for approval; it does not abandon the prompt after six seconds.
+
+The enrollment probe reads only a public certificate. The active WSS connection uses `CERT_REQUIRED` with the approved leaf certificate as its trust anchor and checks the exact active peer fingerprint again before sending registration or a saved client key. Changed certificates stop pairing and invalidate saved credentials; there is no automatic plain-connection fallback. A secure pointer-input URL must point to the same TV, scheme and port. This trust setting is local to HomeBase and does not install a system or browser certificate.
+
+The secure initialization follows the [maintained webOS client](https://github.com/home-assistant-libs/aiowebostv/blob/main/aiowebostv/webos_client.py): hello, pre-registration system information, then registration. Supported legacy models can still use an explicitly permitted `http://TV-address:3000` connection. A read-only connection test never registers a remote, requests a new pairing prompt, or sends a key.
