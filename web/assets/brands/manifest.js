@@ -1,18 +1,19 @@
-// Local transparent vectors; provenance in CREDITS.md.
+// Local transparent brand artwork; provenance in CREDITS.md.
 export const BRAND_LOGOS=Object.freeze({
   "telstra": {
-      "id": "telstra",
-      "name": "Telstra",
-      "logo": "/assets/brands/telstra.svg",
-      "monoLogo": "/assets/brands/telstra.mono.svg",
-      "darkLogo": "/assets/brands/telstra.svg",
-      "color": "#0D54FF",
-      "roles": [
-          "isp"
-      ],
-      "source": "https://www.telstra.com.au/etc/designs/lego/nav-lego/assets/t-logo.svg",
-      "brandSource": "https://www.telstra.com.au/",
-      "license": "Official Telstra website header artwork; trademark rights reserved. Used for provider identification."
+    "id": "telstra",
+    "name": "Telstra",
+    "logo": "/assets/brands/telstra.svg",
+    "monoLogo": "/assets/brands/telstra.mono.svg",
+    "darkLogo": "/assets/brands/telstra.svg",
+    "color": "#0D54FF",
+    "roles": [
+      "isp",
+      "router"
+    ],
+    "source": "https://www.telstra.com.au/etc/designs/lego/nav-lego/assets/t-logo.svg",
+    "brandSource": "https://www.telstra.com.au/",
+    "license": "Official Telstra website header artwork; trademark rights reserved. Used for provider identification."
   },
   "tplink": {
     "id": "tplink",
@@ -212,6 +213,49 @@ export const BRAND_LOGOS=Object.freeze({
     "source": "https://managedit.broadbandsolutions.com.au/wp-content/uploads/2021/09/logo-01.svg",
     "brandSource": "https://managedit.broadbandsolutions.com.au/",
     "license": "Official provider artwork; trademark rights reserved"
+  },
+  "optus": {
+    "id": "optus",
+    "name": "Optus",
+    "logo": "/assets/brands/optus.svg",
+    "darkLogo": "/assets/brands/optus.mono.svg",
+    "monoLogo": "/assets/brands/optus.mono.svg",
+    "lightLogo": "/assets/brands/optus.svg",
+    "roles": [
+      "isp",
+      "router"
+    ],
+    "wide": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Optus_logo.svg",
+    "license": "Provider-identification artwork. Trademark rights remain with the owner; no affiliation."
+  },
+  "vocus": {
+    "id": "vocus",
+    "name": "Vocus",
+    "logo": "/assets/brands/vocus.svg",
+    "darkLogo": "/assets/brands/vocus-dark.svg",
+    "monoLogo": "/assets/brands/vocus-dark.svg",
+    "lightLogo": "/assets/brands/vocus.svg",
+    "roles": [
+      "isp"
+    ],
+    "wide": true,
+    "source": "https://www.vocus.com.au/globalassets/global-media/brand/logos/vocus-header-logo.svg",
+    "license": "Provider-identification artwork. Trademark rights remain with the owner; no affiliation."
+  },
+  "flip": {
+    "id": "flip",
+    "name": "Flip",
+    "logo": "/assets/brands/flip.light.webp",
+    "darkLogo": "/assets/brands/flip.png",
+    "monoLogo": "/assets/brands/flip.png",
+    "lightLogo": "/assets/brands/flip.light.webp",
+    "roles": [
+      "isp"
+    ],
+    "wide": true,
+    "source": "https://flipconnect.com.au/storage/website/v1/flip-logo-white.webp",
+    "license": "Provider-identification artwork. Trademark rights remain with the owner; no affiliation."
   }
 });
 export function brandLogo(id,role){const b=Object.prototype.hasOwnProperty.call(BRAND_LOGOS,String(id))?BRAND_LOGOS[String(id)]:null;return b&&(!role||b.roles.includes(role))?b:null;}
