@@ -1,6 +1,8 @@
 # HomeBase OS: from a blank card to a working dashboard
 
-This tutorial installs **HomeBase OS v1.0.0** on **Raspberry Pi OS Lite (64-bit)**. You prepare the Pi from another computer, then use a terminal. No desktop, browser, Home Assistant installation, or host Python setup is needed on the Pi.
+This tutorial installs **HomeBase OS v1.1.0** on **Raspberry Pi OS Lite (64-bit)**. You prepare the Pi from another computer, then use a terminal. No desktop, browser, Home Assistant installation, or host Python setup is needed on the Pi.
+
+v1.1.0 is the **Liquid Glass Update**, with matching transparent light/dark interfaces, floating navigation and rounded device filters. The installation and local-first security model remain the same. See the [release notes](docs/RELEASE-NOTES-1.1.0.md) for what changed.
 
 HomeBase runs locally in Docker. The GitHub website supplies the code and instructions; it does not host your dashboard. Each installation has its own account, encrypted credentials and HTTPS certificates.
 
@@ -167,7 +169,7 @@ The `home-command` container should be running. Verify HTTPS using the generated
 curl --cacert homebase-rootCA.crt https://192.168.1.20:8420/health
 ```
 
-Expected output includes `"status": "ok"` and version `1.0.0`. This verifies the server and certificate from the Pi; it does not establish another device's Wi-Fi reachability or every integration's compatibility. Do not use `curl -k` or bypass certificate validation to hide a certificate error.
+Expected output includes `"status": "ok"` and version `1.1.0`. This verifies the server and certificate from the Pi; it does not establish another device's Wi-Fi reachability or every integration's compatibility. Do not use `curl -k` or bypass certificate validation to hide a certificate error.
 
 If setup failed before “Dashboard ready”, inspect the logs and the troubleshooting section before treating the app as installed.
 

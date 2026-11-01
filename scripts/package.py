@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TOP_LEVEL_FILES = (
     "README.md", "START-HERE.md", "CONTRACT.md", "requirements.txt", "Dockerfile",
     "compose.yaml", "compose.lan.yaml", ".gitignore", ".dockerignore", "requirements-tv.txt", "requirements-docs.txt",
-    "LICENSE", "CONTRIBUTING.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md",
+    "LICENSE", "CONTRIBUTING.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md",
     ".github/workflows/ci.yml", ".github/workflows/pages.yml", "docs/.nojekyll",
 )
 SOURCE_DIRECTORIES = ("app", "web", "scripts", "tests", "docs")

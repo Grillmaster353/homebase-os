@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0c1018">
   <link rel="icon" href="favicon.svg?v=blue-1" type="image/svg+xml">
-  <meta name="description" content="HomeBase OS v1.0.0: a private home command centre for Raspberry Pi OS Lite 64-bit and Docker.">
+  <meta name="description" content="HomeBase OS v1.1.0 Liquid Glass Update: a private home command centre for Raspberry Pi OS Lite 64-bit and Docker.">
   <meta name="homebase-repository" content="https://github.com/Grillmaster353/homebase-os">
   <script defer src="repository.js"></script>
   <title>HomeBase OS · Local by design</title>
@@ -16,11 +16,16 @@
 <header><a class="brand" href="#">HomeBase<span> OS</span></a><nav aria-label="Documentation"><a href="setup.html">Full setup guide</a><a href="#integrations">Integrations</a><a href="#security">Security</a><a href="#operations">Operations</a><a href="#publishing">Release</a></nav></header>
 <main id="main">
   <section class="hero">
-    <div class="eyebrow">HOMEBASE OS · V1.0.0</div>
-    <h1>Your home.<br>Under your control.</h1>
-    <p>A private command centre for the devices, services and intelligence on your home network. Run it on Raspberry Pi OS Lite, and bring it together in your browser.</p>
+    <div class="eyebrow">HOMEBASE OS · V1.1.0 · THE LIQUID GLASS UPDATE</div>
+    <h1>Your home.<br>In a new light.</h1>
+    <p>A private command centre for your network, devices and intelligence. Now with matching liquid-glass light and dark themes. Run it on Raspberry Pi OS Lite, and bring it together in your browser.</p>
     <div class="buttons"><a class="button primary" href="setup.html">Install from scratch</a><a class="button" href="#install" data-repository-link="download" hidden>Download source ZIP</a><a class="button" href="#install" data-repository-link="source" hidden>View on GitHub</a></div>
-    <div class="pills"><span>64-bit Raspberry Pi OS Lite</span><span>Local-first</span><span>HTTPS + approvals</span><span>No desktop required</span></div>
+    <div class="pills"><span>64-bit Raspberry Pi OS Lite</span><span>Local-first</span><span>HTTPS + approvals</span><span>No desktop required</span><span>Light + dark glass</span></div>
+  </section>
+  <section class="release-showcase" aria-labelledby="release-title">
+    <div class="release-copy"><div class="eyebrow">THE LIQUID GLASS UPDATE</div><h2 id="release-title">More transparent.<br>Just as under your control.</h2><p>Clear panes, reflective edges and floating navigation bring the whole interface together. Both themes keep their own character, from bright glass to deep navy. Devices filters now have matching rounded edges, too.</p><div class="buttons"><a class="button primary" href="https://github.com/Grillmaster353/homebase-os/releases/tag/v1.1.0">Explore v1.1.0</a><a class="button" href="RELEASE-NOTES-1.1.0.md">Read the release notes</a></div></div>
+    <div class="release-gallery"><figure><a href="assets/homebase-liquid-glass-light.webp"><img src="assets/homebase-liquid-glass-light.webp" alt="HomeBase light liquid-glass interface with sample telemetry" width="1440" height="1000" loading="lazy"></a><figcaption>LIGHT / Clear, soft and connected.</figcaption></figure><figure><a href="assets/homebase-liquid-glass-dark.webp"><img src="assets/homebase-liquid-glass-dark.webp" alt="HomeBase dark liquid-glass interface with sample telemetry" width="1440" height="1000" loading="lazy"></a><figcaption>DARK / Deep colour. The same glass.</figcaption></figure></div>
+    <p class="preview-caption">Actual interface previews with illustrative telemetry. No account, device inventory or private credentials are included in the download.</p>
   </section>
   <div class="grid">
     <article class="card"><div class="number">01 / VISIBILITY</div><h3>A pulse on your network.</h3><p>Real interface traffic, gateway latency, host health and supported device advertisements. No invented telemetry.</p></article>
@@ -40,7 +45,7 @@ sudo bash scripts/setup-pi.sh</pre><p>Enter the Pi's private IPv4 address and ch
   <section class="section" id="integrations"><div class="eyebrow">REAL PROTOCOLS</div><h2>Connected, with clear limits.</h2><p>Supply your own authorized addresses, pairing and credentials. Discovery does not grant access to a device.</p>
     <table><thead><tr><th>AREA</th><th>CAPABILITY</th></tr></thead><tbody>
       <tr><td>Network</td><td>Neighbor/SSDP/supported ONVIF discovery, interface throughput and local gateway latency. Network changes pause discovery; isolation and sleeping devices affect visibility.</td></tr>
-      <tr><td>Smart TVs</td><td>Direct Samsung, Android/Google TV, Apple TV, Roku and LG webOS adapters with device-authorized pairing. Select the actual Hisense platform. Compatible VIDAA MQTT/TLS firmware needs an owner-supplied authorised client identity and verified TLS trust before PIN pairing. Home Assistant is optional. Samsung/LG/Roku cleartext local channels require explicit device-level opt-in.</td></tr>
+      <tr><td>Smart TVs</td><td>Direct Samsung, Android/Google TV, Apple TV, Roku and LG webOS adapters with device-authorized pairing. Select the actual Hisense platform. Compatible VIDAA MQTT/TLS firmware needs an owner-supplied authorised client identity and verified TLS trust before PIN pairing. Home Assistant is optional. Samsung, Roku and older LG cleartext local channels require explicit device-level opt-in. Modern LG secure-port pairing uses an approved TV certificate fingerprint.</td></tr>
       <tr><td>Hikvision</td><td>Authorized ISAPI JPEG snapshots with a supported account and channel. API/ONVIF settings can require enabling on the camera. No bundled RTSP transcoder or recording service.</td></tr>
       <tr><td>Servers</td><td>Host CPU, memory, disk and traffic plus configured Prometheus node_exporter endpoints. CPU utilization needs two counter samples.</td></tr>
       <tr><td>Home Assistant</td><td>Read real entities and approve supported service calls, scenes and automations. Home Assistant remains your separately managed service.</td></tr>
@@ -61,7 +66,7 @@ sudo docker compose -f compose.yaml -f compose.lan.yaml up -d --build</pre>
     <details><summary>Keep data through an update</summary><p>Keep the existing Compose project and named volumes. Never use <code>down -v</code> as an update command: it removes the saved account, encrypted vault and workspace. Protect backups and private CA material.</p></details>
     <details><summary>About this documentation website</summary><p>This is static documentation source. Publishing it with GitHub Pages is optional and separate from the dashboard, which runs only on your own host. No repository, workflow or public site is created merely by downloading the source.</p></details>
   </section>
-  <section class="section" id="publishing"><div class="eyebrow">SHARE THE SOURCE</div><h2>Your repository. Your release.</h2><p>Upload the prepared <code>homebase-os/</code> source folder to your own GitHub repository, review its CI results, and create a draft release at the <code>v1.0.0</code> tag. Attach the source ZIP and its matching SHA-256 checksum when ready.</p><p>The supplied documentation workflow publishes only after a manual run. GitHub Pages hosts these static guides; the authenticated application continues to run on the user's own Pi. Source preparation does not create a remote repository or publish anything.</p><div class="buttons"><a class="button" href="RELEASING.md">Complete release guide · Markdown</a><a class="button" href="PUBLISH-CHECKLIST.md">Publishing checklist · Markdown</a></div></section>
+  <section class="section" id="publishing"><div class="eyebrow">SHARE THE SOURCE</div><h2>Ready for your next chapter.</h2><p>Read the v1.1.0 release notes, download the reviewed source and its matching SHA-256 checksum, then install on your own hardware. Existing installations can rebuild while keeping their volumes and private certificate material.</p><p>The supplied documentation workflow publishes only after a manual run. GitHub Pages hosts these static guides; the authenticated application continues to run on the user's own Pi. Source preparation does not create a remote repository or publish anything.</p><div class="buttons"><a class="button" href="RELEASE-NOTES-1.1.0.md">v1.1.0 release notes · Markdown</a><a class="button" href="RELEASING.md">Complete release guide · Markdown</a><a class="button" href="PUBLISH-CHECKLIST.md">Publishing checklist · Markdown</a></div></section>
 </main>
-<footer><span>HomeBase OS v1.0.0 · MIT application license · Separate third-party notices apply.</span><span>Local by design. Human approval by default.</span></footer>
+<footer><span>HomeBase OS v1.1.0 · MIT application license · Separate third-party notices apply.</span><span>Local by design. Human approval by default.</span></footer>
 </body></html>

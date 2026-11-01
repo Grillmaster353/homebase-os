@@ -21,8 +21,8 @@
 </li>
 </ul>
 </div>
-<p class="guide-meta">v1.0.0 · Raspberry Pi OS Lite 64-bit<br>Docker Engine + Compose</p></aside><article id="guide" class="guide-content"><h1 id="homebase-os-from-a-blank-card-to-a-working-dashboard">HomeBase OS: from a blank card to a working dashboard</h1>
-<p>This tutorial installs <strong>HomeBase OS v1.0.0</strong> on <strong>Raspberry Pi OS Lite (64-bit)</strong>. You prepare the Pi from another computer, then use a terminal. No desktop, browser, Home Assistant installation, or host Python setup is needed on the Pi.</p>
+<p class="guide-meta">v1.1.0 · Raspberry Pi OS Lite 64-bit<br>Docker Engine + Compose</p></aside><article id="guide" class="guide-content"><h1 id="homebase-os-from-a-blank-card-to-a-working-dashboard">HomeBase OS: from a blank card to a working dashboard</h1>
+<p>This tutorial installs <strong>HomeBase OS v1.1.0</strong> on <strong>Raspberry Pi OS Lite (64-bit)</strong>. You prepare the Pi from another computer, then use a terminal. No desktop, browser, Home Assistant installation, or host Python setup is needed on the Pi.</p>
 <p>HomeBase runs locally in Docker. The GitHub website supplies the code and instructions; it does not host your dashboard. Each installation has its own account, encrypted credentials and HTTPS certificates.</p>
 <h2 id="1-gather-the-hardware">1. Gather the hardware</h2>
 <p>For a first installation, use a Raspberry Pi 4 or 5 with 4 GB RAM or more, a suitable power supply, cooling appropriate to the model, and a reliable 32 GB or larger microSD card or supported SSD. This is a practical starting recommendation, not a claim that every Pi/model has been hardware-tested. A Docker build can use more resources than the running dashboard. Older or low-memory models need separate validation.</p>
@@ -130,7 +130,7 @@ sudo docker compose -f compose.yaml -f compose.lan.yaml logs --tail=60
 <p>The <code>home-command</code> container should be running. Verify HTTPS using the generated local CA, substituting the Pi's real address:</p>
 <pre><code class="language-sh">curl --cacert homebase-rootCA.crt https://192.168.1.20:8420/health
 </code></pre>
-<p>Expected output includes <code>"status": "ok"</code> and version <code>1.0.0</code>. This verifies the server and certificate from the Pi; it does not establish another device's Wi-Fi reachability or every integration's compatibility. Do not use <code>curl -k</code> or bypass certificate validation to hide a certificate error.</p>
+<p>Expected output includes <code>"status": "ok"</code> and version <code>1.1.0</code>. This verifies the server and certificate from the Pi; it does not establish another device's Wi-Fi reachability or every integration's compatibility. Do not use <code>curl -k</code> or bypass certificate validation to hide a certificate error.</p>
 <p>If setup failed before “Dashboard ready”, inspect the logs and the troubleshooting section before treating the app as installed.</p>
 <h2 id="10-trust-your-own-https-certificate-on-client-devices">10. Trust your own HTTPS certificate on client devices</h2>
 <p>Setup places the <strong>public</strong> certificate <code>homebase-rootCA.crt</code> in the source folder. Transfer only this public certificate to your own client device over trusted SSH/SFTP. Keep <code>certs/server.key</code>, <code>.setup-ca/</code>, the Docker data volume and the vault private.</p>

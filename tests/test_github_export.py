@@ -32,7 +32,7 @@ class GitHubExportTests(unittest.TestCase):
             root, destination = self.fixture(directory)
             for name in (".data/master.key", ".data/vault.enc", "certs/server.key", ".setup-ca/rootCA.key",
                          "workspace/personal.md", ".git/config", "web/screenshots/personal.svg",
-                         "web/personal-screenshot.png", "web/personal-screenshot.svg", "scripts/start.sh", "scripts/start-lan.sh"):
+                         "web/personal-screenshot.png", "web/personal-screenshot.svg", "docs/assets/personal-photo.webp", "scripts/start.sh", "scripts/start-lan.sh"):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("private fixture must not be exported")
@@ -45,7 +45,9 @@ class GitHubExportTests(unittest.TestCase):
             self.assertTrue((destination / ".github/workflows/ci.yml").is_file())
             self.assertTrue((destination / "requirements-tv.txt").is_file())
             self.assertTrue((destination / "web/assets/brands/example.svg").is_file())
-            for name in (".data", "certs", ".setup-ca", "workspace", ".git", "web/screenshots", "web/personal-screenshot.png", "web/personal-screenshot.svg", "scripts/start.sh", "scripts/start-lan.sh"):
+            for preview in exporter.PUBLIC_PREVIEWS:
+                self.assertTrue((destination / preview).is_file())
+            for name in (".data", "certs", ".setup-ca", "workspace", ".git", "web/screenshots", "web/personal-screenshot.png", "web/personal-screenshot.svg", "docs/assets/personal-photo.webp", "scripts/start.sh", "scripts/start-lan.sh"):
                 self.assertFalse((destination / name).exists(), name)
             saved = json.loads((destination / "EXPORT-MANIFEST.json").read_text())
             self.assertEqual(saved, manifest)

@@ -19,13 +19,14 @@ ROOT = Path(__file__).resolve().parent.parent
 ROOT_FILES = (
     "Dockerfile", "compose.yaml", "compose.lan.yaml", "requirements.txt",
     "requirements-tv.txt", "requirements-docs.txt", ".gitignore", ".dockerignore", "LICENSE",
-    "SECURITY.md", "CONTRIBUTING.md", "THIRD_PARTY_NOTICES.md",
+    "SECURITY.md", "CONTRIBUTING.md", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md",
 )
 ROOT_REPLACEMENTS = {
     "README.md": "docs/public/README.md",
     "START-HERE.md": "docs/public/START-HERE.md",
 }
 SCRIPTS = ("scripts/setup-pi.sh", "scripts/package.py", "scripts/export-github.py", "scripts/build-docs.py")
+PUBLIC_PREVIEWS = ("docs/assets/homebase-liquid-glass-light.webp", "docs/assets/homebase-liquid-glass-dark.webp")
 WORKFLOWS = (".github/workflows/ci.yml", ".github/workflows/pages.yml")
 TREE_TYPES = {
     "app": {".py"},
@@ -39,14 +40,14 @@ BLOCKED_PARTS = {
 }
 REQUIRED = (
     "Dockerfile", "compose.yaml", "compose.lan.yaml", "requirements.txt", "requirements-tv.txt",
-    "README.md", "START-HERE.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "requirements-docs.txt", "scripts/build-docs.py",
+    "README.md", "START-HERE.md", "CHANGELOG.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "requirements-docs.txt", "scripts/build-docs.py",
     "THIRD_PARTY_NOTICES.md", "app/__init__.py", "app/server.py", "app/security.py",
     "app/admin.py", "app/lan.py", "app/lan_setup.py", "app/integrations.py",
     "app/direct_tv.py", "app/network_identity.py", "app/router_ouis.py",
     "app/monitor.py", "app/ai.py", "web/index.html", "web/app.js", "web/styles.css",
     "web/icons.js", "scripts/setup-pi.sh", "scripts/package.py",
     "scripts/export-github.py", "docs/index.html", "docs/site.css", "docs/INSTALL.md",
-    "docs/integrations.md", "docs/TV.md", "docs/operations.md", "docs/setup.html", "docs/guide.css", "docs/guide.js", "docs/repository.js", "docs/RELEASING.md", "docs/PUBLISH-CHECKLIST.md", *WORKFLOWS,
+    "docs/integrations.md", "docs/TV.md", "docs/operations.md", "docs/setup.html", "docs/guide.css", "docs/guide.js", "docs/repository.js", "docs/RELEASING.md", "docs/PUBLISH-CHECKLIST.md", *PUBLIC_PREVIEWS, *WORKFLOWS,
 )
 
 # Split local identifiers keep the policy itself free of private account text.
@@ -97,6 +98,10 @@ def selected_files(root: Path) -> dict[str, Path]:
             if candidate.suffix.lower() in {".png", ".webp"} and relative.parts[:3] != ("web", "assets", "brands"):
                 continue
             selected[str(relative)] = safe_source(root, str(relative))
+    # Only these reviewed example-data previews may enter the public docs profile.
+    for relative in PUBLIC_PREVIEWS:
+        if (root / relative).exists():
+            selected[relative] = safe_source(root, relative)
     nojekyll = root / "docs/.nojekyll"
     if nojekyll.is_file():
         selected["docs/.nojekyll"] = safe_source(root, "docs/.nojekyll")

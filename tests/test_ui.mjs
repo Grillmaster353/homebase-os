@@ -11,6 +11,7 @@ import { BRAND_LOGOS, brandLogo } from '../web/assets/brands/manifest.js';
 import { icon as realIcon } from '../web/icons.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const releaseVersion = fs.readFileSync(path.join(root, 'app/__init__.py'), 'utf8').match(/__version__\s*=\s*"([^"]+)"/)[1];
 
 function harness(respond = () => ({})) {
   const elements = new Map(['#app', '#toast-root', '#modal-root'].map(key => [key, { innerHTML: '' }]));
@@ -243,7 +244,7 @@ test('workspace menu is interactive and escapes the installation display name', 
   assert.match(html,/<button class="home-switch" data-action="workspace"/);
   assert.match(html,/Family &lt;home&gt;/);
   assert.match(html,/HomeBase OS/);
-  assert.match(html,/v1.0.0/);
+  assert.ok(html.includes('v'+releaseVersion));
   ui.workspaceModal();
   assert.match(elements.get('#modal-root').innerHTML,/id="workspace-form"/);
   assert.match(elements.get('#modal-root').innerHTML,/name="workspaceName"/);

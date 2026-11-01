@@ -1,4 +1,5 @@
 """Public documentation links and publishing-boundary regression checks."""
+from app import __version__
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -59,7 +60,7 @@ class PublicDocumentationTests(unittest.TestCase):
         parser = Links()
         html = (ROOT / "docs/index.html").read_text()
         parser.feed(html)
-        self.assertIn("1.0.0", html)
+        self.assertIn(__version__, html)
         self.assertEqual(parser.scripts, ["repository.js"])
         self.assertTrue((ROOT / "docs/repository.js").is_file())
         self.assertEqual(parser.styles, ["site.css"])

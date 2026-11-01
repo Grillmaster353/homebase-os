@@ -18,3 +18,14 @@ GitHub Actions successfully ran the fixture checks and built Linux ARM64 and AMD
 ## Appearance update — 30 October 2026
 
 The reference-inspired layout keeps all four overview statistics, six overview sections, routes, integration forms and action hooks. Dark colors remain; an optional light mode is saved in browser-local storage. 111 Python tests and 39 offline UI/theme tests pass. Browser checks cover 375px, 768px and 1440px layouts, every mobile route, a saved theme after reload, and an unsaved open form surviving a cross-tab theme change. No browser console errors were observed. All backend source hashes are unchanged.
+
+## v1.1.0 — The Liquid Glass Update, 1 November 2026
+
+The release packages the pronounced liquid-glass presentation in both themes, rounded device filters and the current account/TV integration code. Its interface remains local and preserves the existing pairing, action-approval and credential boundaries.
+
+- The v1.1.0 preparation source passed 177 Python fixture tests and 58 offline UI/theme tests. The appearance commit also passed the fixture jobs and Linux ARM64/AMD64 Docker image builds in [GitHub Actions](https://github.com/Grillmaster353/homebase-os/actions/runs/41291799470).
+- The actual Mac HTTPS service served the verified stylesheet. Safari was checked against the running dashboard. Isolated visual-only pages generated from the same UI functions were checked at 390 px and 1440 px in both themes, without horizontal overflow. The rounded Devices rail was verified at 14 px; the major glass panes used the intended transparent backgrounds and backdrop filters.
+- Public light/dark previews contain illustrative fixture telemetry and generic names, not a real household inventory. They show the actual application renderer and stylesheet, not a generated design mockup.
+- Export audits exclude runtime accounts, vaults, private keys, certificates and assistant files. Release source archives include a manifest and a separate SHA-256 checksum.
+
+Physical Raspberry Pi fit/performance and universal device compatibility are not established by these checks. Samsung pairing can still fail on some models; this release does not claim to fix that issue. Model/firmware requirements in docs/TV.md still apply. No new independent security audit is claimed. Release-preparation checks and the versioned commit's CI results should be reviewed before publication.
