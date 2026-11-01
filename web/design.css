@@ -2423,3 +2423,865 @@ html[data-theme="light"] .stars {
 @media(max-width:850px){.auth-screen{padding:22px}.auth-layout{grid-template-columns:1fr;max-width:450px;gap:28px;margin:35px auto}.auth-story h1{font-size:38px;letter-spacing:-1.5px;margin:12px 0}.auth-story .auth-description{font-size:13px}.auth-visual,.auth-trust{display:none}.auth-card{padding:28px}.auth-footer{font-size:10px;flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.auth-visual *{animation:none!important}}
 @media(min-width:851px){.auth-screen{padding-top:24px;padding-bottom:20px}.auth-layout{margin:24px auto}.auth-card{padding:28px}.auth-card-mark{margin-bottom:20px}.auth-card .field{margin-top:16px}.auth-visual{height:200px}}
+
+/* Liquid glass is exclusively a light-mode presentation.
+   Dark mode retains the original normal HomeBase design. */
+html[data-theme="light"] {
+  --surface: var(--panel);
+  --glass-pane: #fdfefe;
+  --glass-chrome: #f4f8ff;
+  --glass-dialog: #ffffff;
+  --glass-control: #f2f7fe;
+  --glass-control-hover: #e7f0ff;
+  --glass-field: #ffffff;
+  --glass-line: #ffffffb8;
+  --glass-edge: #ffffffff;
+  --glass-highlight: #ffffff57;
+  --glass-shadow: #2d519b30;
+  --glass-blue-glow: #71a6f5b3;
+  --glass-ribbon: #ffffffaa;
+  --glass-ribbon-tone: #a3c8ff63;
+  --glass-violet-glow: #be93eb99;
+  --glass-teal-glow: #67d4e599;
+  --glass-primary-top: #4288f7;
+  --glass-primary-bottom: #2563eb;
+}
+
+/* One fixed backdrop keeps colour behind every pane, including the remote
+   halfway down a phone page. It is static: no animation or JS effects. */
+html[data-theme="light"] body {
+  background: var(--bg);
+  isolation: isolate;
+}
+html[data-theme="light"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90vw 75vh at 0% 4%, var(--glass-blue-glow), transparent 70%),
+    radial-gradient(ellipse 72vw 74vh at 100% 48%, var(--glass-violet-glow), transparent 72%),
+    radial-gradient(ellipse 80vw 70vh at 40% 100%, var(--glass-teal-glow), transparent 74%),
+    radial-gradient(ellipse 115vw 95vh at 105% 8%, transparent 37%, var(--glass-ribbon) 45%, transparent 54%),
+    linear-gradient(125deg, transparent 27%, var(--glass-ribbon-tone) 44%, transparent 62%),
+    var(--bg);
+}
+html[data-theme="light"] .auth-screen {
+  background: transparent;
+}
+html[data-theme="light"] .workspace {
+  background: transparent;
+}
+html[data-theme="light"] .card,
+html[data-theme="light"] .tv-remote,
+html[data-theme="light"] .auth-card {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 0% 0%, var(--glass-highlight), transparent 62%),
+    linear-gradient(145deg, #ffffff0b, transparent 38%, #ffffff05 80%),
+    var(--glass-pane);
+  border-color: var(--glass-line);
+  box-shadow:
+    inset 0 1.5px 0 var(--glass-edge),
+    inset 1px 0 0 var(--glass-highlight),
+    inset 0 -1px 0 #ffffff14,
+    0 22px 55px -22px var(--glass-shadow);
+}
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .topbar {
+  background: linear-gradient(150deg, var(--glass-highlight), transparent 70%), var(--glass-chrome);
+  border-color: var(--glass-line);
+}
+html[data-theme="light"] .sidebar {
+  box-shadow: inset -1px 0 0 var(--glass-highlight), 10px 0 45px -35px var(--glass-shadow);
+}
+html[data-theme="light"] .topbar {
+  box-shadow: inset 0 -1px 0 var(--glass-highlight), 0 8px 30px -25px var(--glass-shadow);
+}
+html[data-theme="light"] .home-switch,
+html[data-theme="light"] .search-trigger,
+html[data-theme="light"] .network-identity-badge,
+html[data-theme="light"] .identity-preview .network-identity-badge,
+html[data-theme="light"] .provider-choice,
+html[data-theme="light"] .integration-tile,
+html[data-theme="light"] .tv-room-link,
+html[data-theme="light"] .segmented,
+html[data-theme="light"] .tabs,
+html[data-theme="light"] .compose-field {
+  background: linear-gradient(145deg, var(--glass-highlight), transparent 65%), var(--glass-control);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 3px 12px -10px var(--glass-shadow);
+}
+html[data-theme="light"] .home-switch:hover,
+html[data-theme="light"] .network-identity-badge:hover,
+html[data-theme="light"] .provider-choice:hover,
+html[data-theme="light"] .integration-tile:hover,
+html[data-theme="light"] .tv-room-link:hover {
+  background: linear-gradient(135deg, var(--glass-highlight), transparent 70%), var(--glass-control-hover);
+  border-color: var(--accent-border);
+}
+html[data-theme="light"] .network-identity-badge,
+html[data-theme="light"] .home-switch,
+html[data-theme="light"] .provider-choice,
+html[data-theme="light"] .integration-tile,
+html[data-theme="light"] .tv-room-link {
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+html[data-theme="light"] .network-identity-badge {
+  border-radius: 18px;
+}
+html[data-theme="light"] .sidebar .nav-item.active,
+html[data-theme="light"] .settings-nav button.active,
+html[data-theme="light"] .tv-room-link.selected {
+  background: linear-gradient(140deg, var(--glass-highlight), transparent 80%), var(--surface-selected);
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 0 0 1px var(--accent-border), 0 6px 18px -14px var(--glass-blue-glow);
+}
+html[data-theme="light"] .brand-mark,
+html[data-theme="light"] .boot-logo,
+html[data-theme="light"] .auth-card-mark,
+html[data-theme="light"] .stat-icon,
+html[data-theme="light"] .integration-logo {
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 5px 16px -12px var(--glass-blue-glow);
+}
+html[data-theme="light"] .btn:not(.secondary):not(.ghost):not(.danger) {
+  background: linear-gradient(160deg, var(--glass-primary-top), var(--glass-primary-bottom));
+  box-shadow: inset 0 1px 0 #ffffff4d, 0 5px 16px -9px var(--mint);
+}
+html[data-theme="light"] .btn.secondary,
+html[data-theme="light"] .btn.ghost,
+html[data-theme="light"] .icon-button,
+html[data-theme="light"] .auth-header .theme-toggle,
+html[data-theme="light"] .keyboard-row button,
+html[data-theme="light"] .remote-key:not(.color-key):not(.power-key) {
+  background: linear-gradient(155deg, var(--glass-highlight), transparent 70%), var(--glass-control);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 3px 10px -9px var(--glass-shadow);
+}
+html[data-theme="light"] .btn.secondary:hover,
+html[data-theme="light"] .btn.ghost:hover,
+html[data-theme="light"] .icon-button:hover,
+html[data-theme="light"] .keyboard-row button:hover,
+html[data-theme="light"] .remote-key:not(.color-key):not(.power-key):hover {
+  background: linear-gradient(145deg, var(--glass-highlight), transparent 75%), var(--glass-control-hover);
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+html[data-theme="light"] .btn:disabled,
+html[data-theme="light"] .remote-key:disabled,
+html[data-theme="light"] .keyboard-row button:disabled {
+  box-shadow: none;
+}
+html[data-theme="light"] .remote-dpad,
+html[data-theme="light"] .remote-rocker {
+  background: linear-gradient(155deg, var(--glass-highlight), transparent 60%), var(--glass-control);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 -3px 12px #00000008, 0 8px 22px -16px var(--glass-shadow);
+}
+html[data-theme="light"] .remote-dpad .remote-key,
+html[data-theme="light"] .remote-rocker .remote-key {
+  background: transparent;
+  box-shadow: none;
+}
+html[data-theme="light"] .remote-dpad .dpad-ok {
+  background: linear-gradient(150deg, var(--glass-highlight), transparent 80%), var(--accent-soft);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 4px 14px -9px var(--glass-shadow);
+}
+html[data-theme="light"] .remote-key.power-key {
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+html[data-theme="light"] .remote-key.color-red { background: #d95164; }
+html[data-theme="light"] .remote-key.color-green { background: #43ac8a; }
+html[data-theme="light"] .remote-key.color-yellow { background: #e8b651; }
+html[data-theme="light"] .remote-key.color-blue { background: #4d8cef; }
+html[data-theme="light"] .field input,
+html[data-theme="light"] .field select,
+html[data-theme="light"] .field textarea,
+html[data-theme="light"] .search-field,
+html[data-theme="light"] .tv-keyboard-panel input {
+  background: var(--glass-field);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 3px #00000006;
+}
+html[data-theme="light"] .field input:focus,
+html[data-theme="light"] .field select:focus,
+html[data-theme="light"] .field textarea:focus,
+html[data-theme="light"] .tv-keyboard-panel input:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px var(--accent-soft), inset 0 1px 3px #00000004;
+}
+
+/* Native option menus need an opaque backing even when the field is glass. */
+html[data-theme="light"] select option {
+  background: var(--panel);
+  color: var(--text);
+}
+html[data-theme="light"] .device-table th,
+html[data-theme="light"] .entity-row,
+html[data-theme="light"] .security-feature,
+html[data-theme="light"] .integration-list-item,
+html[data-theme="light"] .card-head,
+html[data-theme="light"] .chart-foot,
+html[data-theme="light"] .chat-compose,
+html[data-theme="light"] .remote-more,
+html[data-theme="light"] .remote-tip,
+html[data-theme="light"] .auth-account-help,
+html[data-theme="light"] .auth-foot {
+  border-color: var(--glass-line);
+}
+html[data-theme="light"] .device-table thead,
+html[data-theme="light"] .device-table th {
+  background: var(--glass-control);
+}
+html[data-theme="light"] .device-table tbody tr:hover,
+html[data-theme="light"] .entity-row:hover,
+html[data-theme="light"] .search-result:hover {
+  background: var(--glass-control-hover);
+}
+html[data-theme="light"] .message.user .message-avatar,
+html[data-theme="light"] .message-avatar,
+html[data-theme="light"] .pill,
+html[data-theme="light"] .pill.muted,
+html[data-theme="light"] .badge,
+html[data-theme="light"] .nav-count {
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+html[data-theme="light"] .modal {
+  background: linear-gradient(145deg, var(--glass-highlight), transparent 46%), var(--glass-dialog);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 28px 100px #00000045;
+}
+html[data-theme="light"] .modal-shade {
+  background: var(--overlay);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-theme="light"] .chart-tooltip {
+  background: var(--glass-dialog);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 8px 25px var(--glass-shadow);
+}
+html[data-theme="light"] .toast {
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 12px 35px var(--glass-shadow);
+}
+
+/* Blur is progressive enhancement. Small controls inherit the pane beneath
+   them, avoiding hundreds of independent GPU-filtered keyboard/remote layers. */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+html[data-theme="light"] {
+    --glass-pane: #ffffff66;
+    --glass-chrome: #f5faff85;
+    --glass-dialog: #ffffffcf;
+    --glass-control: #ffffff36;
+    --glass-control-hover: #ffffff70;
+    --glass-field: #ffffffeb;
+    --muted: #4f5f79;
+    --dim: #53657f;
+    --text-secondary: #273c5c;
+  }
+html[data-theme="light"] .card,
+html[data-theme="light"] .tv-remote,
+html[data-theme="light"] .auth-card,
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .topbar {
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
+
+/* A card inside another pane already has a filtered backdrop. */
+html[data-theme="light"] .card .card,
+html[data-theme="light"] .card .tv-remote {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+html[data-theme="light"] .modal {
+    -webkit-backdrop-filter: blur(22px) saturate(155%);
+    backdrop-filter: blur(22px) saturate(155%);
+  }
+html[data-theme="light"] .modal-shade {
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+  }
+@media (max-width: 760px) {
+html[data-theme="light"] .card,
+html[data-theme="light"] .tv-remote,
+html[data-theme="light"] .auth-card,
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .topbar {
+      -webkit-backdrop-filter: blur(11px) saturate(150%);
+      backdrop-filter: blur(11px) saturate(150%);
+    }
+html[data-theme="light"] .modal {
+      -webkit-backdrop-filter: blur(14px) saturate(145%);
+      backdrop-filter: blur(14px) saturate(145%);
+    }
+
+  
+}
+
+
+}
+
+/* Curved floating chrome exposes the colour field around it. */
+html[data-theme="light"] .topbar {
+  margin: 12px 20px 0;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  box-shadow: inset 0 1.5px 0 var(--glass-edge), 0 15px 45px -22px var(--glass-shadow);
+}
+html[data-theme="light"] .card:not(.tv-remote):not(.auth-card) { border-radius: 24px; }
+html[data-theme="light"] .auth-card { border-radius: 30px; }
+html[data-theme="light"] .tv-remote { border-radius: 42px; }
+@media (min-width: 981px) {
+html[data-theme="light"] .sidebar {
+    inset: 12px auto 12px 12px;
+    width: calc(var(--side) - 16px);
+    padding-left: 10px;
+    padding-right: 10px;
+    border: 1px solid var(--glass-line);
+    border-radius: 25px;
+    box-shadow: inset 0 1.5px 0 var(--glass-edge), 0 18px 55px -22px var(--glass-shadow);
+  }
+html[data-theme="light"] .sidebar .nav-item.active::before { display: none; }
+
+
+}
+@media (min-width: 541px) and (max-width: 980px) {
+html[data-theme="light"] .sidebar {
+    inset: 12px auto 12px 8px;
+    width: 65px;
+    padding-left: 9px;
+    padding-right: 9px;
+    border: 1px solid var(--glass-line);
+    border-radius: 23px;
+  }
+
+
+}
+@media (max-width: 760px) {
+html[data-theme="light"] .topbar { margin: 10px 12px 0; padding-left: 12px; padding-right: 12px; border-radius: 20px; }
+
+
+}
+@media (max-width: 540px) {
+html[data-theme="light"] .sidebar.open { inset: 12px auto 12px 12px; border: 1px solid var(--glass-line); border-radius: 25px; }
+html[data-theme="light"] .tv-remote { border-radius: 38px; }
+
+
+}
+
+/* The border's reflection is clipped to the edge, never overlaid on text. */
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+html[data-theme="light"] .card::before,
+html[data-theme="light"] .modal::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(130deg, #ffffffa1, #ffffff05 28%, #c5edff47 58%, #ffffff0a 78%, #ffffff66);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+
+}
+html[data-theme="light"] .modal { position: relative; }
+html[data-theme="light"] .btn.secondary,
+html[data-theme="light"] .btn.ghost,
+html[data-theme="light"] .icon-button,
+html[data-theme="light"] .keyboard-row button,
+html[data-theme="light"] .remote-key:not(.color-key):not(.power-key) {
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 -1px 0 #ffffff12, 0 5px 14px -9px var(--glass-shadow);
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+html[data-theme="light"] {
+    --glass-pane: #ffffff;
+    --glass-chrome: #f5f8fc;
+    --glass-dialog: #ffffff;
+    --glass-control: #f1f5fb;
+    --glass-control-hover: #e3edfc;
+    --glass-field: #ffffff;
+    --glass-line: #7589a57a;
+    --glass-edge: transparent;
+    --glass-highlight: transparent;
+  }
+html[data-theme="light"] .card,
+html[data-theme="light"] .tv-remote,
+html[data-theme="light"] .auth-card,
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .topbar,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .modal-shade {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+html[data-theme="light"] body,
+html[data-theme="light"] .auth-screen {
+    background: var(--bg);
+  }
+html[data-theme="light"] body::before,
+html[data-theme="light"] .card::before,
+html[data-theme="light"] .modal::before {
+    display: none;
+  }
+
+
+}
+@media (prefers-reduced-motion: reduce) {
+html[data-theme="light"] .network-identity-badge,
+html[data-theme="light"] .home-switch,
+html[data-theme="light"] .provider-choice,
+html[data-theme="light"] .integration-tile,
+html[data-theme="light"] .tv-room-link {
+    transition: none;
+  }
+
+
+}
+
+/* Devices and entity filters: the outer rail follows the rounded buttons.
+   This small layout fix applies in both normal dark and glass light mode. */
+.tabs {
+  max-width: 100%;
+  border-radius: 14px;
+  padding: 4px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tabs .tab {
+  border-radius: 10px;
+}
+
+@media (max-width: 540px) {
+  .tabs {
+    padding: 3px;
+    gap: 3px;
+  }
+}
+
+
+/* Dark liquid glass mirrors the approved light presentation.
+   This layer is additive and scoped exclusively to dark mode. */
+html[data-theme="dark"] {
+  --surface: var(--panel);
+  --glass-pane: #161f30;
+  --glass-chrome: #111b2c;
+  --glass-dialog: #192335;
+  --glass-control: #202c40;
+  --glass-control-hover: #293a55;
+  --glass-field: #101a2b;
+  --glass-line: #d8ebff59;
+  --glass-edge: #eef8ff8c;
+  --glass-highlight: #e4f3ff25;
+  --glass-shadow: #020b2659;
+  --glass-blue-glow: #256ce7c7;
+  --glass-ribbon: #b3e7ff40;
+  --glass-ribbon-tone: #72a5ff2e;
+  --glass-violet-glow: #9553e8a8;
+  --glass-teal-glow: #1aaecb99;
+  --glass-primary-top: #9bc8ff;
+  --glass-primary-bottom: #68a9ff;
+}
+
+/* One fixed backdrop keeps colour behind every pane, including the remote
+   halfway down a phone page. It is static: no animation or JS effects. */
+html[data-theme="dark"] body {
+  background: var(--bg);
+  isolation: isolate;
+}
+html[data-theme="dark"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90vw 75vh at 0% 4%, var(--glass-blue-glow), transparent 70%),
+    radial-gradient(ellipse 72vw 74vh at 100% 48%, var(--glass-violet-glow), transparent 72%),
+    radial-gradient(ellipse 80vw 70vh at 40% 100%, var(--glass-teal-glow), transparent 74%),
+    radial-gradient(ellipse 115vw 95vh at 105% 8%, transparent 37%, var(--glass-ribbon) 45%, transparent 54%),
+    linear-gradient(125deg, transparent 27%, var(--glass-ribbon-tone) 44%, transparent 62%),
+    var(--bg);
+}
+html[data-theme="dark"] .auth-screen {
+  background: transparent;
+}
+html[data-theme="dark"] .workspace {
+  background: transparent;
+}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .tv-remote,
+html[data-theme="dark"] .auth-card {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 0% 0%, var(--glass-highlight), transparent 62%),
+    linear-gradient(145deg, #ffffff0b, transparent 38%, #ffffff05 80%),
+    var(--glass-pane);
+  border-color: var(--glass-line);
+  box-shadow:
+    inset 0 1.5px 0 var(--glass-edge),
+    inset 1px 0 0 var(--glass-highlight),
+    inset 0 -1px 0 #ffffff14,
+    0 22px 55px -22px var(--glass-shadow);
+}
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .topbar {
+  background: linear-gradient(150deg, var(--glass-highlight), transparent 70%), var(--glass-chrome);
+  border-color: var(--glass-line);
+}
+html[data-theme="dark"] .sidebar {
+  box-shadow: inset -1px 0 0 var(--glass-highlight), 10px 0 45px -35px var(--glass-shadow);
+}
+html[data-theme="dark"] .topbar {
+  box-shadow: inset 0 -1px 0 var(--glass-highlight), 0 8px 30px -25px var(--glass-shadow);
+}
+html[data-theme="dark"] .home-switch,
+html[data-theme="dark"] .search-trigger,
+html[data-theme="dark"] .network-identity-badge,
+html[data-theme="dark"] .identity-preview .network-identity-badge,
+html[data-theme="dark"] .provider-choice,
+html[data-theme="dark"] .integration-tile,
+html[data-theme="dark"] .tv-room-link,
+html[data-theme="dark"] .segmented,
+html[data-theme="dark"] .tabs,
+html[data-theme="dark"] .compose-field {
+  background: linear-gradient(145deg, var(--glass-highlight), transparent 65%), var(--glass-control);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 3px 12px -10px var(--glass-shadow);
+}
+html[data-theme="dark"] .home-switch:hover,
+html[data-theme="dark"] .network-identity-badge:hover,
+html[data-theme="dark"] .provider-choice:hover,
+html[data-theme="dark"] .integration-tile:hover,
+html[data-theme="dark"] .tv-room-link:hover {
+  background: linear-gradient(135deg, var(--glass-highlight), transparent 70%), var(--glass-control-hover);
+  border-color: var(--accent-border);
+}
+html[data-theme="dark"] .network-identity-badge,
+html[data-theme="dark"] .home-switch,
+html[data-theme="dark"] .provider-choice,
+html[data-theme="dark"] .integration-tile,
+html[data-theme="dark"] .tv-room-link {
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+html[data-theme="dark"] .network-identity-badge {
+  border-radius: 18px;
+}
+html[data-theme="dark"] .sidebar .nav-item.active,
+html[data-theme="dark"] .settings-nav button.active,
+html[data-theme="dark"] .tv-room-link.selected {
+  background: linear-gradient(140deg, var(--glass-highlight), transparent 80%), var(--surface-selected);
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 0 0 1px var(--accent-border), 0 6px 18px -14px var(--glass-blue-glow);
+}
+html[data-theme="dark"] .brand-mark,
+html[data-theme="dark"] .boot-logo,
+html[data-theme="dark"] .auth-card-mark,
+html[data-theme="dark"] .stat-icon,
+html[data-theme="dark"] .integration-logo {
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 5px 16px -12px var(--glass-blue-glow);
+}
+html[data-theme="dark"] .btn:not(.secondary):not(.ghost):not(.danger) {
+  background: linear-gradient(160deg, var(--glass-primary-top), var(--glass-primary-bottom));
+  box-shadow: inset 0 1px 0 #ffffff4d, 0 5px 16px -9px var(--mint);
+}
+html[data-theme="dark"] .btn.secondary,
+html[data-theme="dark"] .btn.ghost,
+html[data-theme="dark"] .icon-button,
+html[data-theme="dark"] .auth-header .theme-toggle,
+html[data-theme="dark"] .keyboard-row button,
+html[data-theme="dark"] .remote-key:not(.color-key):not(.power-key) {
+  background: linear-gradient(155deg, var(--glass-highlight), transparent 70%), var(--glass-control);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 3px 10px -9px var(--glass-shadow);
+}
+html[data-theme="dark"] .btn.secondary:hover,
+html[data-theme="dark"] .btn.ghost:hover,
+html[data-theme="dark"] .icon-button:hover,
+html[data-theme="dark"] .keyboard-row button:hover,
+html[data-theme="dark"] .remote-key:not(.color-key):not(.power-key):hover {
+  background: linear-gradient(145deg, var(--glass-highlight), transparent 75%), var(--glass-control-hover);
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+html[data-theme="dark"] .btn:disabled,
+html[data-theme="dark"] .remote-key:disabled,
+html[data-theme="dark"] .keyboard-row button:disabled {
+  box-shadow: none;
+}
+html[data-theme="dark"] .remote-dpad,
+html[data-theme="dark"] .remote-rocker {
+  background: linear-gradient(155deg, var(--glass-highlight), transparent 60%), var(--glass-control);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 -3px 12px #00000008, 0 8px 22px -16px var(--glass-shadow);
+}
+html[data-theme="dark"] .remote-dpad .remote-key,
+html[data-theme="dark"] .remote-rocker .remote-key {
+  background: transparent;
+  box-shadow: none;
+}
+html[data-theme="dark"] .remote-dpad .dpad-ok {
+  background: linear-gradient(150deg, var(--glass-highlight), transparent 80%), var(--accent-soft);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 4px 14px -9px var(--glass-shadow);
+}
+html[data-theme="dark"] .remote-key.power-key {
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+html[data-theme="dark"] .remote-key.color-red { background: #d95164; }
+html[data-theme="dark"] .remote-key.color-green { background: #43ac8a; }
+html[data-theme="dark"] .remote-key.color-yellow { background: #e8b651; }
+html[data-theme="dark"] .remote-key.color-blue { background: #4d8cef; }
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] .field textarea,
+html[data-theme="dark"] .search-field,
+html[data-theme="dark"] .tv-keyboard-panel input {
+  background: var(--glass-field);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 3px #00000006;
+}
+html[data-theme="dark"] .field input:focus,
+html[data-theme="dark"] .field select:focus,
+html[data-theme="dark"] .field textarea:focus,
+html[data-theme="dark"] .tv-keyboard-panel input:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px var(--accent-soft), inset 0 1px 3px #00000004;
+}
+
+/* Native option menus need an opaque backing even when the field is glass. */
+html[data-theme="dark"] select option {
+  background: var(--panel);
+  color: var(--text);
+}
+html[data-theme="dark"] .device-table th,
+html[data-theme="dark"] .entity-row,
+html[data-theme="dark"] .security-feature,
+html[data-theme="dark"] .integration-list-item,
+html[data-theme="dark"] .card-head,
+html[data-theme="dark"] .chart-foot,
+html[data-theme="dark"] .chat-compose,
+html[data-theme="dark"] .remote-more,
+html[data-theme="dark"] .remote-tip,
+html[data-theme="dark"] .auth-account-help,
+html[data-theme="dark"] .auth-foot {
+  border-color: var(--glass-line);
+}
+html[data-theme="dark"] .device-table thead,
+html[data-theme="dark"] .device-table th {
+  background: var(--glass-control);
+}
+html[data-theme="dark"] .device-table tbody tr:hover,
+html[data-theme="dark"] .entity-row:hover,
+html[data-theme="dark"] .search-result:hover {
+  background: var(--glass-control-hover);
+}
+html[data-theme="dark"] .message.user .message-avatar,
+html[data-theme="dark"] .message-avatar,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .pill.muted,
+html[data-theme="dark"] .badge,
+html[data-theme="dark"] .nav-count {
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+html[data-theme="dark"] .modal {
+  background: linear-gradient(145deg, var(--glass-highlight), transparent 46%), var(--glass-dialog);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 28px 100px #00000045;
+}
+html[data-theme="dark"] .modal-shade {
+  background: var(--overlay);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-theme="dark"] .chart-tooltip {
+  background: var(--glass-dialog);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 8px 25px var(--glass-shadow);
+}
+html[data-theme="dark"] .toast {
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 12px 35px var(--glass-shadow);
+}
+
+/* Blur is progressive enhancement. Small controls inherit the pane beneath
+   them, avoiding hundreds of independent GPU-filtered keyboard/remote layers. */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+html[data-theme="dark"] {
+    --glass-pane: #11203752;
+    --glass-chrome: #0e1b2b70;
+    --glass-dialog: #14233fc9;
+    --glass-control: #d7ecff16;
+    --glass-control-hover: #c6e2ff2b;
+    --glass-field: #081426d9;
+    --muted: #c0cee3;
+    --dim: #afc0da;
+    --text-secondary: #dfebff;
+  }
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .tv-remote,
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .topbar {
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
+
+/* A card inside another pane already has a filtered backdrop. */
+html[data-theme="dark"] .card .card,
+html[data-theme="dark"] .card .tv-remote {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+html[data-theme="dark"] .modal {
+    -webkit-backdrop-filter: blur(22px) saturate(155%);
+    backdrop-filter: blur(22px) saturate(155%);
+  }
+html[data-theme="dark"] .modal-shade {
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+  }
+@media (max-width: 760px) {
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .tv-remote,
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .topbar {
+      -webkit-backdrop-filter: blur(11px) saturate(150%);
+      backdrop-filter: blur(11px) saturate(150%);
+    }
+html[data-theme="dark"] .modal {
+      -webkit-backdrop-filter: blur(14px) saturate(145%);
+      backdrop-filter: blur(14px) saturate(145%);
+    }
+
+  
+}
+
+
+}
+
+/* Curved floating chrome exposes the colour field around it. */
+html[data-theme="dark"] .topbar {
+  margin: 12px 20px 0;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  box-shadow: inset 0 1.5px 0 var(--glass-edge), 0 15px 45px -22px var(--glass-shadow);
+}
+html[data-theme="dark"] .card:not(.tv-remote):not(.auth-card) { border-radius: 24px; }
+html[data-theme="dark"] .auth-card { border-radius: 30px; }
+html[data-theme="dark"] .tv-remote { border-radius: 42px; }
+@media (min-width: 981px) {
+html[data-theme="dark"] .sidebar {
+    inset: 12px auto 12px 12px;
+    width: calc(var(--side) - 16px);
+    padding-left: 10px;
+    padding-right: 10px;
+    border: 1px solid var(--glass-line);
+    border-radius: 25px;
+    box-shadow: inset 0 1.5px 0 var(--glass-edge), 0 18px 55px -22px var(--glass-shadow);
+  }
+html[data-theme="dark"] .sidebar .nav-item.active::before { display: none; }
+
+
+}
+@media (min-width: 541px) and (max-width: 980px) {
+html[data-theme="dark"] .sidebar {
+    inset: 12px auto 12px 8px;
+    width: 65px;
+    padding-left: 9px;
+    padding-right: 9px;
+    border: 1px solid var(--glass-line);
+    border-radius: 23px;
+  }
+
+
+}
+@media (max-width: 760px) {
+html[data-theme="dark"] .topbar { margin: 10px 12px 0; padding-left: 12px; padding-right: 12px; border-radius: 20px; }
+
+
+}
+@media (max-width: 540px) {
+html[data-theme="dark"] .sidebar.open { inset: 12px auto 12px 12px; border: 1px solid var(--glass-line); border-radius: 25px; }
+html[data-theme="dark"] .tv-remote { border-radius: 38px; }
+
+
+}
+
+/* The border's reflection is clipped to the edge, never overlaid on text. */
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+html[data-theme="dark"] .card::before,
+html[data-theme="dark"] .modal::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(130deg, #ffffffa1, #ffffff05 28%, #c5edff47 58%, #ffffff0a 78%, #11203752);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+
+}
+html[data-theme="dark"] .modal { position: relative; }
+html[data-theme="dark"] .btn.secondary,
+html[data-theme="dark"] .btn.ghost,
+html[data-theme="dark"] .icon-button,
+html[data-theme="dark"] .keyboard-row button,
+html[data-theme="dark"] .remote-key:not(.color-key):not(.power-key) {
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 -1px 0 #ffffff12, 0 5px 14px -9px var(--glass-shadow);
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+html[data-theme="dark"] {
+    --glass-pane: #161f30;
+    --glass-chrome: #111b2c;
+    --glass-dialog: #192335;
+    --glass-control: #202c40;
+    --glass-control-hover: #293a55;
+    --glass-field: #101a2b;
+    --glass-line: #8ca9cf7a;
+    --glass-edge: transparent;
+    --glass-highlight: transparent;
+  }
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .tv-remote,
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .modal-shade {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+html[data-theme="dark"] body,
+html[data-theme="dark"] .auth-screen {
+    background: var(--bg);
+  }
+html[data-theme="dark"] body::before,
+html[data-theme="dark"] .card::before,
+html[data-theme="dark"] .modal::before {
+    display: none;
+  }
+
+
+}
+@media (prefers-reduced-motion: reduce) {
+html[data-theme="dark"] .network-identity-badge,
+html[data-theme="dark"] .home-switch,
+html[data-theme="dark"] .provider-choice,
+html[data-theme="dark"] .integration-tile,
+html[data-theme="dark"] .tv-room-link {
+    transition: none;
+  }
+
+
+}
