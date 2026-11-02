@@ -1,4 +1,4 @@
-# Release HomeBase OS v1.1.0
+# Release HomeBase OS v1.1.1
 
 This guide prepares a GitHub repository, an optional public documentation website and a downloadable source release. The application itself runs on the user's Raspberry Pi with Docker. These steps do not publish a running dashboard.
 
@@ -10,8 +10,8 @@ The prepared kit uses this layout:
 HOMEBASE GitHub Release Kit/
 ├── START HERE.html
 ├── homebase-os/                         ← repository source
-├── homebase-os-v1.1.0-source.zip         ← downloadable source
-└── homebase-os-v1.1.0-source.zip.sha256  ← matching checksum
+├── homebase-os-v1.1.1-source.zip         ← downloadable source
+└── homebase-os-v1.1.1-source.zip.sha256  ← matching checksum
 ```
 
 Use `homebase-os/` as the repository root. It contains the Dockerfile, Compose files, application, local assets, tests, guides, license and `.github/workflows/`. The ZIP is source code, not a prebuilt container or Raspberry Pi SD-card image. No account, password, private CA, integration credentials or Ollama model is included.
@@ -38,7 +38,7 @@ git status --short
 Review the list before continuing. It should contain source and documentation, including `.github/workflows/`, `.gitignore` and `.dockerignore`. It must not include runtime data, private keys, credentials or personal screenshots.
 
 ```sh
-git commit -m "Release HomeBase OS v1.1.0"
+git commit -m "Release HomeBase OS v1.1.1"
 git branch -M main
 git remote add origin YOUR_REPOSITORY_URL
 git remote -v
@@ -72,14 +72,14 @@ On a standard `OWNER.github.io/REPOSITORY/` Pages URL, the website automatically
 
 The supplied workflow runs only when manually requested. Source pushes do not trigger that Pages workflow. Do not select the application `web/` directory as a replacement for the documentation: GitHub Pages does not run the Python backend. See [GitHub's publishing-source guide](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
-## 6. Tag the reviewed v1.1.0 source
+## 6. Tag the reviewed v1.1.1 source
 
 From `homebase-os/`, after confirming that the working tree contains the version you intend to release:
 
 ```sh
 git status --short
-git tag -a v1.1.0 -m "HomeBase OS v1.1.0"
-git push origin v1.1.0
+git tag -a v1.1.1 -m "HomeBase OS v1.1.1"
+git push origin v1.1.1
 ```
 
 Use a new version/tag for subsequent releases. Preserve a published release's source and checksum; do not move its tag to silently replace the code.
@@ -89,39 +89,39 @@ Use a new version/tag for subsequent releases. Preserve a published release's so
 The kit already includes a ZIP and checksum. On a Mac, run this from the kit folder containing those two files:
 
 ```sh
-shasum -a 256 -c homebase-os-v1.1.0-source.zip.sha256
+shasum -a 256 -c homebase-os-v1.1.1-source.zip.sha256
 ```
 
 On Linux:
 
 ```sh
-sha256sum -c homebase-os-v1.1.0-source.zip.sha256
+sha256sum -c homebase-os-v1.1.1-source.zip.sha256
 ```
 
 If you changed source after the kit was prepared, regenerate the ZIP from the reviewed tag so the release and archive agree. From the repository folder:
 
 ```sh
 git archive --format=zip --prefix=homebase-os/ \
-  --output=../homebase-os-v1.1.0-source.zip v1.1.0
+  --output=../homebase-os-v1.1.1-source.zip v1.1.1
 cd ..
-shasum -a 256 homebase-os-v1.1.0-source.zip > homebase-os-v1.1.0-source.zip.sha256
+shasum -a 256 homebase-os-v1.1.1-source.zip > homebase-os-v1.1.1-source.zip.sha256
 ```
 
 On Linux, use `sha256sum` instead of `shasum -a 256` for the last command. Hash the final ZIP once it is complete, then distribute that exact ZIP with its matching checksum. The archive includes only committed files; make sure all intended source was committed before tagging.
 
 ## 8. Create the GitHub Release
 
-Open **Releases → Draft a new release**, select the `v1.1.0` tag and title it **HomeBase OS v1.1.0**. Add release notes and attach:
+Open **Releases → Draft a new release**, select the `v1.1.1` tag and title it **HomeBase OS v1.1.1**. Add release notes and attach:
 
-- `homebase-os-v1.1.0-source.zip`
-- `homebase-os-v1.1.0-source.zip.sha256`
+- `homebase-os-v1.1.1-source.zip`
+- `homebase-os-v1.1.1-source.zip.sha256`
 
 Save a draft until the source, assets and validation statements are ready. Choose **Publish release** yourself when you intend to make the release available. GitHub's automatically generated source archives are separate files; the supplied checksum matches the specifically attached ZIP. The official [release-management guide](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) covers these controls.
 
 Suggested release notes:
 
 ```text
-HomeBase OS v1.1.0
+HomeBase OS v1.1.1
 
 Local-first home command centre for Raspberry Pi OS Lite 64-bit and Docker.
 Includes the responsive dashboard, supported discovery/TV/camera integrations,
@@ -149,4 +149,4 @@ Do not use `down -v` as an update command. See [operations and backups](operatio
 
 ## License and future paid features
 
-This release contains the MIT-licensed core. The [license](../LICENSE) permits commercial redistribution with its notice conditions; [third-party notices](../THIRD_PARTY_NOTICES.md) still apply. No checkout, payment service, license server or activation/unlock system is implemented in v1.1.0. Any future commercial feature or licensing service needs its own design and implementation.
+This release contains the MIT-licensed core. The [license](../LICENSE) permits commercial redistribution with its notice conditions; [third-party notices](../THIRD_PARTY_NOTICES.md) still apply. No checkout, payment service, license server or activation/unlock system is implemented in v1.1.1. Any future commercial feature or licensing service needs its own design and implementation.

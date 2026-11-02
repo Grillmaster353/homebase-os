@@ -1,24 +1,16 @@
 # HomeBase OS
 
-**v1.1.0 · A private home command centre for Raspberry Pi OS Lite 64-bit.**
+**v1.1.1 · A private home command centre for Raspberry Pi OS Lite 64-bit.**
 
 HomeBase OS brings network visibility, authorized smart-device controls, camera snapshots, server monitoring and an approval-based AI assistant into one responsive dashboard with light and dark themes. It runs on your own hardware and works from a Mac, iPhone or iPad on the same trusted home network.
 
 This public distribution uses **Docker on a 64-bit Linux host**. Raspberry Pi OS Lite needs no desktop environment or browser on the Pi. The application does not install host packages or publish itself to the internet.
 
-## v1.1.0 — The Liquid Glass Update
+## v1.1.1 — Classic Design Restored
 
-A new look across the whole command centre: transparent panes, reflective edges, floating navigation and a soft blue/violet/cyan backdrop in **both light and dark mode**. The redesign reaches the sign-in screen, dashboard, settings, dialogs and TV remotes. Devices filters now have a rounded rail that fits their selected tab.
+The familiar HomeBase appearance is back in both light and dark mode, with the blue accent and the rounded Devices filter rail. Liquid-glass panes, reflective rims and the floating navigation treatment have been removed. Existing accounts, saved integrations, pairing and action-approval settings are preserved.
 
-The visual effects adapt to phone layouts and reduced-transparency/high-contrast preferences. Browsers without backdrop filtering use solid surfaces. Existing integrations, accounts and action-approval rules keep their behavior.
-
-| Light | Dark |
-| --- | --- |
-| ![HomeBase light liquid-glass interface with sample telemetry](docs/assets/homebase-liquid-glass-light.webp) | ![HomeBase dark liquid-glass interface with sample telemetry](docs/assets/homebase-liquid-glass-dark.webp) |
-
-*Actual interface previews with illustrative telemetry. These are not measurements from a bundled installation.*
-
-Read the [release notes](docs/RELEASE-NOTES-1.1.0.md), [changelog](CHANGELOG.md) or [download the v1.1.0 release](https://github.com/Grillmaster353/homebase-os/releases/tag/v1.1.0).
+Read the [release notes](docs/RELEASE-NOTES-1.1.1.md), [changelog](CHANGELOG.md) or [download the v1.1.1 release](https://github.com/Grillmaster353/homebase-os/releases/tag/v1.1.1). The earlier v1.1.0 release remains available in the project history.
 
 ## Quick start
 
@@ -42,18 +34,18 @@ For a clean Git checkout, fetch and select the reviewed release, then rebuild:
 
 ```sh
 git status --short
-git fetch origin tag v1.1.0
-git checkout v1.1.0
+git fetch origin tag v1.1.1
+git checkout v1.1.1
 sudo docker compose -f compose.yaml -f compose.lan.yaml up -d --build
 ```
 
-Do **not** run `docker compose down -v`: it removes saved data. v1.1.0 introduces no new account setup or data migration. Sign in with your existing account and refresh your browser. See [operations and backups](docs/operations.md) for details.
+Do **not** run `docker compose down -v`: it removes saved data. v1.1.1 introduces no new account setup or data migration. Sign in with your existing account and refresh your browser. See [operations and backups](docs/operations.md) for details.
 
 ## What works
 
 | Area | Supported behavior |
 | --- | --- |
-| Dashboard | Responsive liquid-glass light and dark interfaces, live charts, searchable inventory, activity history and approval queue. |
+| Dashboard | Responsive classic light and dark interfaces, live charts, searchable inventory, activity history and approval queue. |
 | Discovery | Local neighbor, SSDP and supported ONVIF advertisements; automatic refresh after explicitly enabled or started with the Pi setup profile. Network changes pause discovery. |
 | Network | Real interface throughput, host telemetry, and gateway latency. These describe current usage, not your ISP plan maximum. |
 | Provider/router badge | Any manual provider/router name; opt-in automatic identification with 60-second public-IP change checks; local manufacturer-prefix matching and authentic bundled logos with a generic fallback. |
@@ -86,7 +78,7 @@ A configured remote AI provider receives chat, selected telemetry and approved f
 - [Troubleshooting, updates and backups](docs/operations.md)
 - [Contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
-- [Publish the repository, docs and v1.1.0 release](docs/RELEASING.md)
+- [Publish the repository, docs and v1.1.1 release](docs/RELEASING.md)
 - [Pre-publication checklist](docs/PUBLISH-CHECKLIST.md)
 
 `docs/index.html` is a standalone documentation website with local assets. To publish **only the documentation**, optionally select GitHub Actions in the repository's Pages settings and manually run **Publish documentation**. The supplied workflow has no push trigger. Alternatively, configure Pages to serve the `main` branch's `/docs` folder. GitHub Pages cannot run this Python service and is not a dashboard hosting option. [GitHub explains these publishing choices](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site).
@@ -98,7 +90,7 @@ Create an empty repository in your own GitHub account. Review this source folder
 ```sh
 git init
 git add .
-git commit -m "Release HomeBase OS v1.1.0"
+git commit -m "Release HomeBase OS v1.1.1"
 git branch -M main
 git remote add origin YOUR_REPOSITORY_URL
 git push -u origin main
@@ -108,4 +100,4 @@ This package creates no remote repository and performs no push or publication. T
 
 ## Release and license
 
-HomeBase OS version **1.1.0** is the Liquid Glass Update. Source is provided under the [MIT license](LICENSE), with [separate third-party notices](THIRD_PARTY_NOTICES.md). Real hardware pairing, Raspberry Pi performance and LAN reachability must be validated on the target home network. The project does not claim universal smart-TV support or an independent security audit.
+HomeBase OS version **1.1.1** restores the classic design. Source is provided under the [MIT license](LICENSE), with [separate third-party notices](THIRD_PARTY_NOTICES.md). Real hardware pairing, Raspberry Pi performance and LAN reachability must be validated on the target home network. The project does not claim universal smart-TV support or an independent security audit.

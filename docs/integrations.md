@@ -1,6 +1,6 @@
 # Integration guide
 
-HomeBase OS v1.1.0 uses real protocol clients and reports connection errors. Discovery and an attractive control do not establish authorization or universal device support.
+HomeBase OS v1.1.1 uses real protocol clients and reports connection errors. Discovery and an attractive control do not establish authorization or universal device support.
 
 ## Network discovery and identity
 

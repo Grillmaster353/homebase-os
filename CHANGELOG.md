@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.1 — Classic Design Restored · 2026-11-02
+
+### Changed
+
+- Restored the pre-liquid-glass HomeBase appearance in both light and dark mode.
+- Kept the blue accent, saved theme preference, full-screen sign-in and rounded Devices filter rail.
+- Removed the glass backdrop, reflective pane treatment and floating navigation overrides.
+- Updated the installation, release and landing-page documentation to describe the restored design.
+
+Accounts, encrypted settings, integrations, pairings and action-approval behavior are unchanged. There is no data migration. The v1.1.0 tag remains available as an archived release. See [release notes](docs/RELEASE-NOTES-1.1.1.md).
+
 ## 1.1.0 — The Liquid Glass Update · 2026-11-01
 
 ### Changed

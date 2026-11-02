@@ -1,6 +1,6 @@
 # Security policy
 
-HomeBase OS v1.1.0 is intended for a trusted private home network. It has not undergone an independent security audit. There is no public hosting mode, cloud account recovery service or supported internet-facing deployment.
+HomeBase OS v1.1.1 is intended for a trusted private home network. It has not undergone an independent security audit. There is no public hosting mode, cloud account recovery service or supported internet-facing deployment.
 
 ## Reporting a vulnerability
 

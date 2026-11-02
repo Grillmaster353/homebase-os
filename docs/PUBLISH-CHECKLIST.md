@@ -1,11 +1,11 @@
-# HomeBase OS v1.1.0 publishing checklist
+# HomeBase OS v1.1.1 publishing checklist
 
 Use this before uploading the source, publishing documentation or making a GitHub Release. Preparing this kit does not perform any of those publishing actions.
 
 ## Source folder
 
 - [ ] The repository root is the prepared `homebase-os/` folder, containing `Dockerfile`, Compose files, `app/`, `web/`, `scripts/`, `tests/`, `docs/` and `.github/workflows/`.
-- [ ] The public README and terminal guide target Raspberry Pi OS Lite **64-bit** and Docker, with version **1.1.0**.
+- [ ] The public README and terminal guide target Raspberry Pi OS Lite **64-bit** and Docker, with version **1.1.1**.
 - [ ] No `.data/`, encrypted vault, master key, `certs/`, `.setup-ca/`, assistant workspace, `.env`, private credentials or personal screenshots are included.
 - [ ] Hidden `.gitignore`, `.dockerignore` and workflow files are present. The source ZIP is not accidentally nested as the repository's only file.
 - [ ] `scripts/setup-pi.sh` retains its executable bit, or users are instructed to run it with `sudo bash scripts/setup-pi.sh`.
@@ -37,10 +37,10 @@ Use this before uploading the source, publishing documentation or making a GitHu
 
 ## Release assets
 
-- [ ] The `v1.1.0` tag identifies the reviewed source commit.
-- [ ] The final `homebase-os-v1.1.0-source.zip` contains the intended source under `homebase-os/`, including required hidden files.
+- [ ] The `v1.1.1` tag identifies the reviewed source commit.
+- [ ] The final `homebase-os-v1.1.1-source.zip` contains the intended source under `homebase-os/`, including required hidden files.
 - [ ] Regenerate the ZIP if source changed after preparation, then create a new checksum from the final ZIP.
-- [ ] `homebase-os-v1.1.0-source.zip.sha256` verifies successfully against that exact ZIP.
+- [ ] `homebase-os-v1.1.1-source.zip.sha256` verifies successfully against that exact ZIP.
 - [ ] Attach both files to the draft GitHub Release, add truthful validation notes, and choose pre-release status if appropriate.
 - [ ] Save the draft until ready; choose **Publish release** only when publication is intended.
 
