@@ -38,6 +38,8 @@ class Application:
             monitor = Monitor()
         self.vault = Vault(data_dir)
         self.sessions = Sessions()
+        from .anna_connect import AnnaConnection
+        self.anna_connection = AnnaConnection(self)
         self.auth_limiter = RateLimiter(5, 300)
         self.mfa_disable_limiter = RateLimiter(5, 300)
         self.chat_limiter = RateLimiter(25, 60)
@@ -272,7 +274,7 @@ class Handler(BaseHTTPRequestHandler):
         # origin policy above and the authentication/CSRF checks below.
         entry_navigation = (
             self.command in {"GET","HEAD"}
-            and unquote(urlsplit(self.path).path) in {"/","/index.html"}
+            and unquote(urlsplit(self.path).path) in {"/","/index.html","/anna-connect.html"}
             and self.headers.get("Sec-Fetch-Mode")=="navigate"
             and self.headers.get("Sec-Fetch-Dest")=="document"
         )
@@ -357,7 +359,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, self.status())
             return
         self.require_auth()
-        if path == "/api/overview":
+        if path == "/api/anna/status":
+            if not self.app.secure or not ipaddress.ip_address(self.client_address[0]).is_loopback:
+                raise APIError(403, "Manage Anna connections on this host over HTTPS.")
+            self.send_json(200, self.app.anna_connection.status())
+        elif path == "/api/overview":
             self.send_json(200, self.app.overview())
         elif path == "/api/system":
             self.send_json(200, {"version": __version__, "lan": copy.deepcopy(self.app.lan)})
@@ -456,6 +462,20 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/auth/logout":
             self.app.sessions.delete(self.cookie_token())
             self.send_json(200, {"authenticated": False}, self.auth_cookie("", clear=True))
+        elif path in {"/api/anna/connect", "/api/anna/disconnect"}:
+            if self.command != 'POST' or not self.app.secure or not ipaddress.ip_address(self.client_address[0]).is_loopback:
+                raise APIError(403, "Manage Anna connections on this host over HTTPS.")
+            if path.endswith('/disconnect'):
+                self.app.anna_connection.close()
+                self.send_json(200, {"connected": False})
+            else:
+                if set(body) - {'commands', 'cameraImages'} or any(type(v) is not bool for v in body.values()):
+                    raise APIError(400, "Use explicit command and camera sharing options.")
+                try:
+                    value = self.app.anna_connection.enable(self.require_auth()['user'], commands=body.get('commands', False), cameras=body.get('cameraImages', False))
+                except (ValueError, OSError) as exc:
+                    raise APIError(409, str(exc))
+                self.send_json(200, value)
         elif path == "/api/discovery":
             devices = self.app.monitor.discover()
             self.app.vault.event("Network discovery completed", f"{len(devices)} local devices found.", "network")
@@ -905,6 +925,10 @@ class Server(ThreadingHTTPServer):
                 request.close()
                 raise
         return request, address
+
+    def server_close(self):
+        self.app.anna_connection.close()
+        super().server_close()
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):

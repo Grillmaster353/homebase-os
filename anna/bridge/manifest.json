@@ -1,0 +1,41 @@
+{
+  "name": "tool-grillmaster-homebase-local-bridge-vn4fj8eg",
+  "display_name": "HomeBase Local Bridge",
+  "version": "0.1.2",
+  "description": "Restricted bridge to an explicitly connected private HomeBase installation. Credentials stay in a local memory-only broker. Pair devices and manage secrets in local HomeBase.",
+  "category": "utilities",
+  "license": "MIT",
+  "credentials": [],
+  "tools": [
+    {
+      "name": "request",
+      "description": "Read HomeBase telemetry or send a user-requested supported operation through the owner's local connector. A local connected Anna Agent and an authenticated connector are required. Credentials and security administration are never accepted.",
+      "timeout": 70,
+      "parameters": [
+        {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "Supported /api/ path."
+        },
+        {
+          "name": "method",
+          "description": "GET reads state; POST requests an explicitly permitted operation.",
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "GET",
+          "required": false
+        },
+        {
+          "name": "body",
+          "description": "Optional operation payload. Never include credentials, passwords or pairing codes.",
+          "type": "object",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

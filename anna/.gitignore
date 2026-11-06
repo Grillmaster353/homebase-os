@@ -1,0 +1,7 @@
+/dist/
+/upload/
+/bundle/*
+!/bundle/anna.js
+!/bundle/transport.js
+__pycache__/
+*.pyc

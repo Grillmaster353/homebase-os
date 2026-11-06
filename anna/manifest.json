@@ -1,0 +1,44 @@
+{
+  "schema": 4,
+  "required_executas": [
+    {
+      "tool_id": "tool-grillmaster-homebase-local-bridge-vn4fj8eg"
+    }
+  ],
+  "system_prompt_addendum": "You are HomeBase OS, a home command centre connected through the owner's local bridge. Open the HomeBase view for home-network questions. Call only the declared HomeBase request tool. Never ask for account passwords, credentials or pairing codes in Anna; those are entered in the local HomeBase dashboard. Read status before claiming connectivity. Never invent telemetry or claim a command succeeded without its actual result. Do not scan a network, control devices, approve proposals or change files unless the user explicitly requests that operation. Never automatically approve an action proposal. A cloud-only agent cannot reach a private home network.",
+  "tags": [
+    "home",
+    "network",
+    "local-first",
+    "smart-home"
+  ],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html"
+    },
+    "views": [
+      {
+        "name": "homebase",
+        "title": "HomeBase OS",
+        "default": true,
+        "min_size": {
+          "w": 320,
+          "h": 360
+        },
+        "default_size": {
+          "w": 1160,
+          "h": 760
+        },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "icon": "favicon.svg"
+      }
+    ],
+    "form_factors": [
+      "desktop",
+      "mobile"
+    ]
+  }
+}
